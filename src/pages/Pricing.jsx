@@ -46,13 +46,13 @@ export default function Pricing() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground leading-tight">
-            The lowest ticketing fees<br />
-            <span className="text-primary">in Australia</span>
+            Event ticketing fees<br />
+            <span className="text-primary">that won't eat your revenue</span>
           </h1>
 
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            No subscriptions, no flat per-ticket fees, no hidden costs. Start free and only pay a 
-            small percentage as you grow. Pass fees to buyers or absorb them — your choice.
+            Australia's cheapest alternative to Eventbrite &amp; Ticket Tailor. No subscriptions, no flat per-ticket fees, no hidden costs. 
+            Free for up to 50 tickets/month, then from just 0.6%. Pass fees to buyers or absorb them — your choice.
           </p>
         </div>
       </section>

@@ -24,10 +24,10 @@ export default function FeaturesSection() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Everything you need to sell tickets
+            All-in-one event ticketing &amp; management
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            No restrictive tiers. Every feature is available on every plan, from day one.
+            No restrictive tiers. Every feature included on every plan — QR scanning, Zoom, reports, branding, and more.
           </p>
         </div>
 

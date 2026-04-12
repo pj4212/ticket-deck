@@ -80,10 +80,10 @@ export default function ComparisonSection() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            How we compare
+            Ticket Space vs Eventbrite vs Ticket Tailor vs Humanitix
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Cost per $50 ticket across popular Australian ticketing platforms.
+            See how ticketing fees compare across Australia's most popular event platforms on a $50 ticket.
           </p>
         </div>
 
