@@ -9,10 +9,13 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import en from './translations/en';
+import es from './translations/es';
+import fr from './translations/fr';
+import de from './translations/de';
 import { SUPPORTED_LOCALES, getLocaleDirection } from './locales';
 
-// Translation registry — lazy-load non-English
-const translations = { en };
+// Translation registry
+const translations = { en, es, fr, de };
 
 /**
  * Get a nested key from an object: getNestedKey(obj, 'checkout.payNow')

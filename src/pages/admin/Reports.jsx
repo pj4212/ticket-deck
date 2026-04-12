@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import useWorkspaceFilter from '@/hooks/useWorkspaceFilter';
+import useWorkspace from '@/hooks/useWorkspace';
+import { formatCurrency } from '@/lib/formatters';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,6 +24,7 @@ function exportCsv(headers, rows, filename) {
 
 export default function Reports() {
   const { wsFilter, workspaceId } = useWorkspaceFilter();
+  const { activeWorkspace: workspace } = useWorkspace();
   const [tickets, setTickets] = useState([]);
   const [orders, setOrders] = useState([]);
   const [occurrences, setOccurrences] = useState([]);
@@ -123,6 +126,11 @@ export default function Reports() {
 
   const activeTickets = useMemo(() => tickets.filter(t => t.ticket_status === 'active'), [tickets]);
 
+  // Currency formatter using workspace settings
+  const wsCur = workspace?.default_currency || 'USD';
+  const wsNumLocale = workspace?.default_number_format || 'en-US';
+  const fmtC = (amount, cur) => formatCurrency(amount, cur || wsCur, wsNumLocale);
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   // Report 1: Tickets by Occurrence
@@ -133,10 +141,12 @@ export default function Reports() {
     const businessOwners = oTickets.filter(t => ttMap[t.ticket_type_id]?.ticket_category === 'business_owner').length;
     const oOrders = orders.filter(ord => ord.event_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
     const revenue = oOrders.reduce((sum, ord) => sum + (ord.total_amount || 0), 0);
+    const taxAmount = oOrders.reduce((sum, ord) => sum + (ord.tax_amount || 0), 0);
+    const currency = o.currency || wsCur;
     return {
       name: o.name, date: o.event_date, location: locations[o.location_id]?.name || '—',
       sold: oTickets.length, candidates, businessOwners, checkedIn, rate: oTickets.length > 0 ? Math.round(checkedIn / oTickets.length * 100) : 0,
-      revenue
+      revenue, taxAmount, currency
     };
   });
 
@@ -151,15 +161,30 @@ export default function Reports() {
 
   const hasActualFees = orders.some(o => o.stripe_fee != null);
 
-  // Report 3: Revenue by occurrence
+  // Report 3: Revenue by occurrence (with tax & currency)
   const revenueReport = filteredOccurrences.map(o => {
     const oOrders = orders.filter(ord => ord.event_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
     const revenue = oOrders.reduce((s, ord) => s + (ord.total_amount || 0), 0);
+    const taxAmount = oOrders.reduce((s, ord) => s + (ord.tax_amount || 0), 0);
+    const subtotal = oOrders.reduce((s, ord) => s + (ord.subtotal_amount || ord.total_amount || 0), 0);
+    const discountTotal = oOrders.reduce((s, ord) => s + (ord.discount_amount || 0), 0);
     const paidOrders = oOrders.filter(ord => ord.payment_status === 'completed' && ord.total_amount > 0);
     const estimatedFees = paidOrders.reduce((s, ord) => s + (ord.total_amount * 0.029 + 0.30), 0);
     const actualFees = paidOrders.reduce((s, ord) => s + (ord.stripe_fee || 0), 0);
     const fees = hasActualFees ? actualFees : estimatedFees;
-    return { name: o.name, date: o.event_date, location: locations[o.location_id]?.name || '—', revenue, fees, estimatedFees, actualFees, profit: revenue - fees };
+    const currency = o.currency || wsCur;
+    return { name: o.name, date: o.event_date, location: locations[o.location_id]?.name || '—', revenue, subtotal, taxAmount, discountTotal, fees, estimatedFees, actualFees, profit: revenue - fees, currency };
+  });
+
+  // Revenue grouped by currency
+  const currencyGroups = {};
+  orders.filter(o => o.order_status === 'confirmed' || o.payment_status === 'completed' || o.payment_status === 'free').forEach(o => {
+    const cur = o.currency || wsCur;
+    if (!currencyGroups[cur]) currencyGroups[cur] = { revenue: 0, tax: 0, orders: 0, refunds: 0 };
+    currencyGroups[cur].revenue += o.total_amount || 0;
+    currencyGroups[cur].tax += o.tax_amount || 0;
+    currencyGroups[cur].orders++;
+    if (o.payment_status === 'refunded' || o.payment_status === 'partially_refunded') currencyGroups[cur].refunds += o.refund_amount || o.total_amount || 0;
   });
 
   async function handleSyncStripeFees() {
@@ -215,6 +240,7 @@ export default function Reports() {
           <TabsTrigger value="discounts">Discounts</TabsTrigger>
           <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
           <TabsTrigger value="slots">Time Slots</TabsTrigger>
+          <TabsTrigger value="currency">By Currency</TabsTrigger>
           <TabsTrigger value="channels">Sales Channels</TabsTrigger>
           <TabsTrigger value="attendee">Attendee Export</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
@@ -239,7 +265,7 @@ export default function Reports() {
                   <TableRow key={i}>
                     <TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.location}</TableCell>
                     <TableCell>{r.sold}</TableCell><TableCell>{r.candidates}</TableCell><TableCell>{r.businessOwners}</TableCell><TableCell>{r.checkedIn}</TableCell><TableCell>{r.rate}%</TableCell>
-                    <TableCell>${r.revenue.toFixed(2)}</TableCell>
+                    <TableCell>{fmtC(r.revenue, r.currency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -300,27 +326,28 @@ export default function Reports() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">${revenueReport.reduce((s, r) => s + r.revenue, 0).toFixed(2)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold">{fmtC(revenueReport.reduce((s, r) => s + r.revenue, 0))}</p></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{hasActualFees ? 'Stripe Fees (actual)' : 'Stripe Fees (est.)'}</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold text-red-400">${revenueReport.reduce((s, r) => s + r.fees, 0).toFixed(2)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold text-red-400">{fmtC(revenueReport.reduce((s, r) => s + r.fees, 0))}</p></CardContent>
             </Card>
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Profit After Fees</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold text-emerald-400">${revenueReport.reduce((s, r) => s + r.profit, 0).toFixed(2)}</p></CardContent>
+              <CardContent><p className="text-2xl font-bold text-emerald-400">{fmtC(revenueReport.reduce((s, r) => s + r.profit, 0))}</p></CardContent>
             </Card>
           </div>
           <div className="border rounded-lg overflow-auto">
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Event</TableHead><TableHead>Date</TableHead><TableHead>Location</TableHead><TableHead>Revenue</TableHead><TableHead>Fees</TableHead><TableHead>Profit</TableHead>
+                <TableHead>Event</TableHead><TableHead>Date</TableHead><TableHead>Location</TableHead><TableHead>Subtotal</TableHead><TableHead>Tax</TableHead><TableHead>Revenue</TableHead><TableHead>Fees</TableHead><TableHead>Profit</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {revenueReport.map((r, i) => (
                   <TableRow key={i}>
                     <TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.location}</TableCell>
-                    <TableCell>${r.revenue.toFixed(2)}</TableCell><TableCell className="text-red-400">${r.fees.toFixed(2)}</TableCell><TableCell className="text-emerald-400">${r.profit.toFixed(2)}</TableCell>
+                    <TableCell>{fmtC(r.subtotal, r.currency)}</TableCell><TableCell className="text-blue-400">{fmtC(r.taxAmount, r.currency)}</TableCell>
+                    <TableCell>{fmtC(r.revenue, r.currency)}</TableCell><TableCell className="text-red-400">{fmtC(r.fees, r.currency)}</TableCell><TableCell className="text-emerald-400">{fmtC(r.profit, r.currency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -339,7 +366,7 @@ export default function Reports() {
             return (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Refunds</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-400">${totalRefunds.toFixed(2)}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Refunds</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-400">{fmtC(totalRefunds)}</p></CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Refunded Orders</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{refundedOrders.length}</p></CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Refund Rate</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{orders.length > 0 ? Math.round(refundedOrders.length / orders.length * 100) : 0}%</p></CardContent></Card>
                 </div>
@@ -355,7 +382,7 @@ export default function Reports() {
                     <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Date</TableHead><TableHead>Refunds</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader>
                     <TableBody>
                       {refundsByEvent.map((r, i) => (
-                        <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.count}</TableCell><TableCell className="text-red-400">${r.amount.toFixed(2)}</TableCell></TableRow>
+                        <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.count}</TableCell><TableCell className="text-red-400">{fmtC(r.amount)}</TableCell></TableRow>
                       ))}
                       {refundsByEvent.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No refunds</TableCell></TableRow>}
                     </TableBody>
@@ -422,7 +449,7 @@ export default function Reports() {
                         <TableRow key={dc.id}>
                           <TableCell className="font-mono font-semibold">{dc.code}</TableCell>
                           <TableCell className="capitalize">{dc.discount_type.replace('_', ' ')}</TableCell>
-                          <TableCell>{dc.discount_type === 'percentage' ? `${dc.discount_value}%` : `$${dc.discount_value.toFixed(2)}`}</TableCell>
+                          <TableCell>{dc.discount_type === 'percentage' ? `${dc.discount_value}%` : fmtC(dc.discount_value, dc.currency)}</TableCell>
                           <TableCell>{dc.times_used || 0}</TableCell>
                           <TableCell>{dc.usage_limit || '∞'}</TableCell>
                           <TableCell>{dc.is_active ? '✓ Active' : 'Inactive'}</TableCell>
@@ -562,6 +589,37 @@ export default function Reports() {
           })()}
         </TabsContent>
 
+        <TabsContent value="currency" className="space-y-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {Object.entries(currencyGroups).map(([cur, data]) => (
+              <Card key={cur}>
+                <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">{cur}</CardTitle></CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{fmtC(data.revenue, cur)}</p>
+                  <p className="text-xs text-muted-foreground">{data.orders} orders · Tax: {fmtC(data.tax, cur)}</p>
+                </CardContent>
+              </Card>
+            ))}
+            {Object.keys(currencyGroups).length === 0 && <p className="text-sm text-muted-foreground col-span-4 text-center py-8">No order data</p>}
+          </div>
+          <div className="border rounded-lg overflow-auto">
+            <Table>
+              <TableHeader><TableRow><TableHead>Currency</TableHead><TableHead>Orders</TableHead><TableHead>Revenue</TableHead><TableHead>Tax Collected</TableHead><TableHead>Refunds</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {Object.entries(currencyGroups).map(([cur, data]) => (
+                  <TableRow key={cur}>
+                    <TableCell className="font-semibold">{cur}</TableCell>
+                    <TableCell>{data.orders}</TableCell>
+                    <TableCell>{fmtC(data.revenue, cur)}</TableCell>
+                    <TableCell className="text-blue-400">{fmtC(data.tax, cur)}</TableCell>
+                    <TableCell className="text-red-400">{fmtC(data.refunds, cur)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
         <TabsContent value="channels" className="space-y-3">
           {(() => {
             const confirmedOrders = orders.filter(o => o.order_status === 'confirmed' || o.payment_status === 'completed' || o.payment_status === 'free');
@@ -596,7 +654,7 @@ export default function Reports() {
                   <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalOrders}</p></CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Online</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-blue-400">{onlineCount}</p></CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Manual / Box Office / Comp</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-violet-400">{manualCount}</p></CardContent></Card>
-                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Manual Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-amber-400">${(sourceGroups.manual.revenue + sourceGroups.box_office.revenue).toFixed(2)}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Manual Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-amber-400">{fmtC(sourceGroups.manual.revenue + sourceGroups.box_office.revenue)}</p></CardContent></Card>
                 </div>
                 <h3 className="font-semibold text-sm mt-4">By Sales Channel</h3>
                 <div className="flex justify-end">
@@ -615,7 +673,7 @@ export default function Reports() {
                           <TableCell className="font-medium">{v.label}</TableCell>
                           <TableCell>{v.orders.length}</TableCell>
                           <TableCell>{v.tickets}</TableCell>
-                          <TableCell>${v.revenue.toFixed(2)}</TableCell>
+                          <TableCell>{fmtC(v.revenue)}</TableCell>
                           <TableCell>{totalOrders > 0 ? Math.round(v.orders.length / totalOrders * 100) : 0}%</TableCell>
                         </TableRow>
                       ))}
@@ -631,7 +689,7 @@ export default function Reports() {
                         <TableRow key={method}>
                           <TableCell className="font-medium capitalize">{method.replace(/_/g, ' ')}</TableCell>
                           <TableCell>{data.count}</TableCell>
-                          <TableCell>${data.revenue.toFixed(2)}</TableCell>
+                          <TableCell>{fmtC(data.revenue)}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

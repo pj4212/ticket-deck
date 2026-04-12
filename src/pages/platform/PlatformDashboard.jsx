@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Building2, CreditCard, Ticket, DollarSign, AlertTriangle, Plug,
-  TrendingUp, Users, Loader2, ChevronRight, ShieldAlert, XCircle
+  TrendingUp, Users, Loader2, ChevronRight, ShieldAlert, XCircle, Globe
 } from 'lucide-react';
+import GlobalHealthDashboard from '@/components/platform/GlobalHealthDashboard';
 
 function StatCard({ icon: Icon, label, value, sub, color, to }) {
   const card = (
@@ -31,13 +32,17 @@ export default function PlatformDashboard() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [workspaces, setWorkspaces] = useState([]);
+
   useEffect(() => {
     async function load() {
-      const [res, alertsData] = await Promise.all([
+      const [res, alertsData, wsData] = await Promise.all([
         base44.functions.invoke('platformAdmin', { action: 'get_stats' }),
         base44.entities.PlatformAlert.filter({ status: 'open' }),
+        base44.entities.Workspace.filter({}),
       ]);
       if (res.data.status === 'success') setStats(res.data.stats);
+      setWorkspaces(wsData);
       setAlerts(alertsData.sort((a, b) => {
         const sev = { critical: 0, high: 1, medium: 2, low: 3 };
         return (sev[a.severity] || 3) - (sev[b.severity] || 3);
@@ -50,7 +55,7 @@ export default function PlatformDashboard() {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   const s = stats || {};
-  const fmtCurrency = (v) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(v || 0);
+  const fmtCurrency = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
   return (
     <div className="space-y-6">
@@ -71,6 +76,16 @@ export default function PlatformDashboard() {
         <StatCard icon={TrendingUp} label="Refunded Orders (30d)" value={s.refunded_orders_30d || 0} color="bg-orange-500/15 text-orange-400" to="/platform/risk" />
         <StatCard icon={Plug} label="Unhealthy Integrations" value={s.unhealthy_integrations || 0} color="bg-rose-500/15 text-rose-400" to="/platform/integrations" />
         <StatCard icon={AlertTriangle} label="Open Alerts" value={s.open_alerts || 0} color="bg-amber-500/15 text-amber-400" to="/platform/risk" />
+      </div>
+
+      {/* Global Health Dashboard */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Globe className="h-4 w-4" /> Workspace Config Health
+          </h2>
+        </div>
+        <GlobalHealthDashboard workspaces={workspaces} />
       </div>
 
       {alerts.length > 0 && (

@@ -58,7 +58,7 @@ export default function EventFormStepTickets({ form, ticketTypes, setTicketTypes
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div>
-            <Label className="text-xs">Price (AUD)</Label>
+            <Label className="text-xs">Price</Label>
             <Input type="number" min="0" step="0.01" value={tt.price} onChange={e => updateTicketType(globalIndex, 'price', e.target.value)} />
           </div>
           <div>

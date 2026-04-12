@@ -9,6 +9,7 @@ import EventFormStepBasic from '@/components/admin/EventFormStepBasic';
 import EventFormStepDateTime from '@/components/admin/EventFormStepDateTime';
 import EventFormStepLocation from '@/components/admin/EventFormStepLocation';
 import EventFormStepTickets from '@/components/admin/EventFormStepTickets';
+import EventFormStepRegional from '@/components/admin/EventFormStepRegional';
 import EventFormStepVisibility from '@/components/admin/EventFormStepVisibility';
 import EventFormStepPublish from '@/components/admin/EventFormStepPublish';
 
@@ -21,6 +22,7 @@ const STEPS = [
   { key: 'datetime', label: 'Date & Time' },
   { key: 'location', label: 'Location' },
   { key: 'tickets', label: 'Tickets' },
+  { key: 'regional', label: 'Regional & Tax' },
   { key: 'visibility', label: 'Visibility' },
   { key: 'publish', label: 'Publish' },
 ];
@@ -37,7 +39,7 @@ export default function EventForm() {
   const [form, setForm] = useState({
     template_id: '', series_id: '', name: '', slug: '', description: '',
     event_date: '', start_datetime: '', end_datetime: '',
-    timezone: 'Australia/Brisbane', event_mode: 'in_person', scheduling_mode: 'standard',
+    timezone: '', event_mode: 'in_person', scheduling_mode: 'standard',
     slot_interval_mins: '', slot_default_capacity: '',
     visibility_mode: 'public_listed', access_password: '',
     recurrence_pattern: '',
@@ -47,11 +49,15 @@ export default function EventForm() {
     waiver_text: '', terms_text: '', show_marketing_opt_in: false, marketing_opt_in_label: '',
     reminder_enabled: true, reminder_hours_before: 24,
     status: 'draft',
+    // Regional overrides
+    currency: '', locale: '',
+    tax_mode_override: 'inherit', tax_rate_override: null, tax_label_override: '',
   });
   const [ticketTypes, setTicketTypes] = useState([]);
   const [locations, setLocations] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
+  const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -61,14 +67,16 @@ export default function EventForm() {
 
   useEffect(() => {
     async function load() {
-      const [locs, tmps, series] = await Promise.all([
+      const [locs, tmps, series, wsList] = await Promise.all([
         base44.entities.Location.filter({ ...wsFilter }),
         base44.entities.EventTemplate.filter({ ...wsFilter, is_active: true }),
         base44.entities.EventSeries.filter({ ...wsFilter }),
+        wsFilter.workspace_id ? base44.entities.Workspace.filter({ id: wsFilter.workspace_id }) : Promise.resolve([]),
       ]);
       setLocations(locs);
       setTemplates(tmps);
       setSeriesList(series);
+      if (wsList.length) setWorkspace(wsList[0]);
 
       const sourceId = isEdit ? id : duplicateId;
       if (sourceId) {
@@ -84,7 +92,7 @@ export default function EventForm() {
               event_date: ev.event_date || '',
               start_datetime: ev.start_datetime ? ev.start_datetime.slice(0, 16) : '',
               end_datetime: ev.end_datetime ? ev.end_datetime.slice(0, 16) : '',
-              timezone: ev.timezone || 'Australia/Brisbane', event_mode: ev.event_mode,
+              timezone: ev.timezone || '', event_mode: ev.event_mode,
               scheduling_mode: ev.scheduling_mode || 'standard',
               slot_interval_mins: ev.slot_interval_mins || '',
               slot_default_capacity: ev.slot_default_capacity || '',
@@ -104,6 +112,12 @@ export default function EventForm() {
               reminder_enabled: ev.reminder_enabled !== false,
               reminder_hours_before: ev.reminder_hours_before || 24,
               status: ev.status || 'draft',
+              // Regional overrides
+              currency: ev.currency || '',
+              locale: ev.locale || '',
+              tax_mode_override: ev.tax_mode_override || 'inherit',
+              tax_rate_override: ev.tax_rate_override ?? null,
+              tax_label_override: ev.tax_label_override || '',
             });
             setTicketTypes(tts.map(tt => ({ ...tt, _existing: true })));
           } else {
@@ -113,7 +127,7 @@ export default function EventForm() {
               name: ev.name + ' (Copy)', slug: ev.slug + '-copy',
               description: ev.description || '',
               event_date: '', start_datetime: '', end_datetime: '',
-              timezone: ev.timezone || 'Australia/Brisbane', event_mode: ev.event_mode,
+              timezone: ev.timezone || '', event_mode: ev.event_mode,
               scheduling_mode: ev.scheduling_mode || 'standard',
               slot_interval_mins: ev.slot_interval_mins || '',
               slot_default_capacity: ev.slot_default_capacity || '',
@@ -131,6 +145,12 @@ export default function EventForm() {
               reminder_enabled: ev.reminder_enabled !== false,
               reminder_hours_before: ev.reminder_hours_before || 24,
               status: 'draft',
+              // Regional overrides
+              currency: ev.currency || '',
+              locale: ev.locale || '',
+              tax_mode_override: ev.tax_mode_override || 'inherit',
+              tax_rate_override: ev.tax_rate_override ?? null,
+              tax_label_override: ev.tax_label_override || '',
             });
             setTicketTypes(tts.map(tt => ({
               name: tt.name, attendance_mode: tt.attendance_mode,
@@ -324,8 +344,9 @@ export default function EventForm() {
           />
         )}
         {step === 3 && <EventFormStepTickets form={form} ticketTypes={ticketTypes} setTicketTypes={setTicketTypes} />}
-        {step === 4 && <EventFormStepVisibility form={form} updateForm={updateForm} />}
-        {step === 5 && (
+        {step === 4 && <EventFormStepRegional form={form} updateForm={updateForm} workspace={workspace} />}
+        {step === 5 && <EventFormStepVisibility form={form} updateForm={updateForm} />}
+        {step === 6 && (
           <EventFormStepPublish
             form={form} updateForm={updateForm} isEdit={isEdit}
             saving={saving} onSave={handleSave} onDelete={handleDelete}

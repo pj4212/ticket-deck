@@ -3,6 +3,9 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Ticket, LogIn, LogOut, UserCog, Menu, X, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import LanguageSelector from '@/components/booking/LanguageSelector';
+import { resolveLocale, getWorkspaceLanguages } from '@/lib/i18n';
+import { getLocaleDirection } from '@/lib/i18n/locales';
 
 const NAV_LINKS = [
   { label: 'How It Works', href: '/#how-it-works' },
@@ -58,12 +61,20 @@ function NavDropdown({ item, onClose }) {
 
 export default function PublicLayout() {
   const [user, setUser] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const locale = resolveLocale(workspace);
+  const dir = getLocaleDirection(locale);
+  const languages = getWorkspaceLanguages(workspace);
 
   useEffect(() => {
     base44.auth.isAuthenticated().then(async (authed) => {
       if (authed) setUser(await base44.auth.me());
+    }).catch(() => {});
+    // Load first workspace for language config
+    base44.entities.Workspace.filter({}).then(wsList => {
+      if (wsList.length) setWorkspace(wsList[0]);
     }).catch(() => {});
   }, []);
 
@@ -82,7 +93,7 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" dir={dir}>
       {/* Top navigation bar */}
       <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -143,6 +154,11 @@ export default function PublicLayout() {
                 </Button>
               </>
             )}
+          </div>
+
+          {/* Language selector (desktop) */}
+          <div className="hidden lg:flex">
+            <LanguageSelector languages={languages} currentLocale={locale} />
           </div>
 
           {/* Mobile hamburger */}
@@ -211,7 +227,7 @@ export default function PublicLayout() {
         )}
       </header>
 
-      <Outlet context={{ user }} />
+      <Outlet context={{ user, workspace, locale, dir }} />
     </div>
   );
 }
