@@ -36,23 +36,31 @@ const NAV_LINKS = [
 
 function NavDropdown({ item, onClose }) {
   const [open, setOpen] = useState(false);
+  let timeout = null;
+  const handleEnter = () => { clearTimeout(timeout); setOpen(true); };
+  const handleLeave = () => { timeout = setTimeout(() => setOpen(false), 150); };
   return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
-        {item.label} <ChevronDown className="h-3.5 w-3.5" />
+    <div className="relative" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      <button
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+        onClick={() => setOpen(prev => !prev)}
+      >
+        {item.label} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-card border border-border rounded-lg shadow-xl py-2 z-50">
-          {item.children.map((child) => (
-            <a
-              key={child.label}
-              href={child.href || child.to}
-              onClick={() => { setOpen(false); onClose?.(); }}
-              className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              {child.label}
-            </a>
-          ))}
+        <div className="absolute top-full left-0 pt-1 w-56 z-50">
+          <div className="bg-card border border-border rounded-lg shadow-xl py-2">
+            {item.children.map((child) => (
+              <a
+                key={child.label}
+                href={child.href || child.to}
+                onClick={() => { setOpen(false); onClose?.(); }}
+                className="block px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              >
+                {child.label}
+              </a>
+            ))}
+          </div>
         </div>
       )}
     </div>
