@@ -36,6 +36,8 @@ export default function Reports() {
   const [syncResult, setSyncResult] = useState(null);
   const [customFields, setCustomFields] = useState([]);
   const [fieldValues, setFieldValues] = useState({});
+  const [discountCodes, setDiscountCodes] = useState([]);
+  const [waitlistEntries, setWaitlistEntries] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -76,6 +78,15 @@ export default function Reports() {
         fvMap[fv.owner_id][fv.field_definition_id] = val;
       });
       setFieldValues(fvMap);
+
+      // Load discount codes and waitlist
+      const [dcList, wlList] = await Promise.all([
+        base44.entities.DiscountCode.filter({ ...wsFilter }).catch(() => []),
+        base44.entities.WaitlistEntry.filter({ ...wsFilter }).catch(() => []),
+      ]);
+      setDiscountCodes(dcList);
+      setWaitlistEntries(wlList);
+
       setLoading(false);
     }
     load();
@@ -192,6 +203,8 @@ export default function Reports() {
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
           <TabsTrigger value="refunds">Refunds</TabsTrigger>
           <TabsTrigger value="checkin">Check-In</TabsTrigger>
+          <TabsTrigger value="discounts">Discounts</TabsTrigger>
+          <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
           <TabsTrigger value="attendee">Attendee Export</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
         </TabsList>
@@ -371,6 +384,89 @@ export default function Reports() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="discounts" className="space-y-3">
+          {(() => {
+            const totalDiscountRevenue = discountCodes.reduce((s, dc) => s + (dc.times_used || 0) * (dc.discount_type === 'fixed_amount' ? dc.discount_value : 0), 0);
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Codes</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{discountCodes.length}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Uses</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-primary">{discountCodes.reduce((s, dc) => s + (dc.times_used || 0), 0)}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Active Codes</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-400">{discountCodes.filter(dc => dc.is_active).length}</p></CardContent></Card>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(
+                    ['Code', 'Type', 'Value', 'Uses', 'Limit', 'Active'],
+                    discountCodes.map(dc => [dc.code, dc.discount_type, dc.discount_value, dc.times_used || 0, dc.usage_limit || '∞', dc.is_active ? 'Yes' : 'No']),
+                    'discount-report.csv'
+                  )}><Download className="h-4 w-4 mr-1" />CSV</Button>
+                </div>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Code</TableHead><TableHead>Type</TableHead><TableHead>Value</TableHead><TableHead>Uses</TableHead><TableHead>Limit</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {discountCodes.map(dc => (
+                        <TableRow key={dc.id}>
+                          <TableCell className="font-mono font-semibold">{dc.code}</TableCell>
+                          <TableCell className="capitalize">{dc.discount_type.replace('_', ' ')}</TableCell>
+                          <TableCell>{dc.discount_type === 'percentage' ? `${dc.discount_value}%` : `$${dc.discount_value.toFixed(2)}`}</TableCell>
+                          <TableCell>{dc.times_used || 0}</TableCell>
+                          <TableCell>{dc.usage_limit || '∞'}</TableCell>
+                          <TableCell>{dc.is_active ? '✓ Active' : 'Inactive'}</TableCell>
+                        </TableRow>
+                      ))}
+                      {discountCodes.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No discount codes</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="waitlist" className="space-y-3">
+          {(() => {
+            const waitingCount = waitlistEntries.filter(e => e.status === 'waiting').length;
+            // Group by event
+            const byEvent = {};
+            waitlistEntries.forEach(e => {
+              const eName = occMap[e.event_id]?.name || 'Unknown';
+              if (!byEvent[e.event_id]) byEvent[e.event_id] = { name: eName, waiting: 0, notified: 0, total: 0 };
+              byEvent[e.event_id].total++;
+              if (e.status === 'waiting') byEvent[e.event_id].waiting++;
+              if (e.status === 'notified') byEvent[e.event_id].notified++;
+            });
+            const eventRows = Object.values(byEvent);
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Entries</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{waitlistEntries.length}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Waiting</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-amber-400">{waitingCount}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Notified</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-primary">{waitlistEntries.filter(e => e.status === 'notified').length}</p></CardContent></Card>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(
+                    ['Event', 'Waiting', 'Notified', 'Total'],
+                    eventRows.map(r => [r.name, r.waiting, r.notified, r.total]),
+                    'waitlist-report.csv'
+                  )}><Download className="h-4 w-4 mr-1" />CSV</Button>
+                </div>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Waiting</TableHead><TableHead>Notified</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {eventRows.map((r, i) => (
+                        <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell className="text-amber-400">{r.waiting}</TableCell><TableCell className="text-primary">{r.notified}</TableCell><TableCell>{r.total}</TableCell></TableRow>
+                      ))}
+                      {eventRows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No waitlist entries</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="attendee" className="space-y-3">

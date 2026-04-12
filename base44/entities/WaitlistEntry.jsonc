@@ -1,0 +1,53 @@
+{
+  "name": "WaitlistEntry",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "event_id": {
+      "type": "string",
+      "title": "Event",
+      "relationType": "Event"
+    },
+    "ticket_type_id": {
+      "type": "string",
+      "title": "Ticket Type",
+      "relationType": "TicketType"
+    },
+    "name": {
+      "type": "string",
+      "title": "Name"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "format": "email"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "waiting",
+        "notified",
+        "converted",
+        "expired"
+      ],
+      "default": "waiting"
+    },
+    "notified_at": {
+      "type": "string",
+      "title": "Notified At",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "event_id",
+    "name",
+    "email",
+    "status"
+  ]
+}

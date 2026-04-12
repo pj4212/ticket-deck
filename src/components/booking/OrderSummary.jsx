@@ -1,28 +1,47 @@
-import { ShoppingCart, Monitor, MapPin } from "lucide-react";
+import { ShoppingCart, Monitor, MapPin, Tag } from "lucide-react";
 
-export default function OrderSummary({ selections, ticketTypes }) {
+export default function OrderSummary({ selections, ticketTypes, discount }) {
   const items = [];
-  let total = 0;
+  let subtotal = 0;
   let ticketCount = 0;
 
   for (const [ttId, qty] of Object.entries(selections)) {
     if (qty <= 0) continue;
     const tt = ticketTypes.find(t => t.id === ttId);
     if (!tt) continue;
-    const subtotal = (tt.price || 0) * qty;
-    total += subtotal;
+    const lineTotal = (tt.price || 0) * qty;
+    subtotal += lineTotal;
     ticketCount += qty;
     items.push({
+      id: tt.id,
       name: tt.name,
       mode: tt.attendance_mode,
       qty,
       price: tt.price,
-      subtotal,
+      subtotal: lineTotal,
       currency: tt.currency || 'AUD',
     });
   }
 
   if (items.length === 0) return null;
+
+  // Calculate discount
+  let discountAmount = 0;
+  if (discount) {
+    const applicableIds = discount.applicable_ticket_type_ids;
+    let discountableTotal = subtotal;
+    if (applicableIds && applicableIds.length > 0) {
+      discountableTotal = items
+        .filter(i => applicableIds.includes(i.id))
+        .reduce((s, i) => s + i.subtotal, 0);
+    }
+    if (discount.discount_type === 'percentage') {
+      discountAmount = discountableTotal * (discount.discount_value / 100);
+    } else {
+      discountAmount = Math.min(discount.discount_value, discountableTotal);
+    }
+  }
+  const total = Math.max(0, subtotal - discountAmount);
 
   return (
     <div className="border border-primary/20 rounded-xl overflow-hidden bg-card">
@@ -54,6 +73,16 @@ export default function OrderSummary({ selections, ticketTypes }) {
           );
         })}
       </div>
+
+      {discountAmount > 0 && (
+        <div className="px-4 py-2 border-t border-border flex justify-between items-center text-sm">
+          <div className="flex items-center gap-1.5 text-emerald-400">
+            <Tag className="h-3.5 w-3.5" />
+            <span>Discount ({discount.code})</span>
+          </div>
+          <span className="text-emerald-400 font-medium">-${discountAmount.toFixed(2)}</span>
+        </div>
+      )}
 
       <div className="px-4 py-3 border-t border-border flex justify-between items-center">
         <span className="font-bold text-foreground">Total</span>

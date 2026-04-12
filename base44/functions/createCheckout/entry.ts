@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { buyer, attendees, event_id, origin_url, send_all_to_buyer } = body;
+    const { buyer, attendees, event_id, origin_url, send_all_to_buyer, discount_code } = body;
 
     // 1. LOAD EVENT
     const events = await withRetry(() => base44.asServiceRole.entities.Event.filter({ id: event_id }), 'load event');
@@ -128,11 +128,55 @@ Deno.serve(async (req) => {
       }), `incr reserved ${ttId}`);
     }
 
-    // 10. CALCULATE TOTAL
-    let totalAmount = 0;
+    // 10. CALCULATE TOTAL (with optional discount)
+    let subtotalAmount = 0;
     for (const att of attendees) {
-      totalAmount += ttMap[att.ticket_type_id].price || 0;
+      subtotalAmount += ttMap[att.ticket_type_id].price || 0;
     }
+
+    let discountAmount = 0;
+    let discountCodeId = null;
+    if (discount_code) {
+      const dcMatches = await withRetry(
+        () => base44.asServiceRole.entities.DiscountCode.filter({ workspace_id: event.workspace_id, code: discount_code.toUpperCase().trim(), is_active: true }),
+        'load discount'
+      );
+      if (dcMatches.length) {
+        const dc = dcMatches[0];
+        const now = new Date().toISOString();
+        const dateValid = (!dc.valid_from || now >= dc.valid_from) && (!dc.valid_until || now <= dc.valid_until);
+        const usageValid = dc.usage_limit == null || (dc.times_used || 0) < dc.usage_limit;
+        let eventValid = true;
+        if (dc.applicable_event_ids_json) {
+          try { const ids = JSON.parse(dc.applicable_event_ids_json); if (ids.length && !ids.includes(event_id)) eventValid = false; } catch (_) {}
+        }
+        if (dateValid && usageValid && eventValid) {
+          // Determine discountable amount
+          let applicableTTIds = null;
+          if (dc.applicable_ticket_type_ids_json) {
+            try { applicableTTIds = JSON.parse(dc.applicable_ticket_type_ids_json); if (!applicableTTIds.length) applicableTTIds = null; } catch (_) {}
+          }
+          let discountableAmount = subtotalAmount;
+          if (applicableTTIds) {
+            discountableAmount = 0;
+            for (const att of attendees) {
+              if (applicableTTIds.includes(att.ticket_type_id)) discountableAmount += ttMap[att.ticket_type_id].price || 0;
+            }
+          }
+          if (dc.discount_type === 'percentage') {
+            discountAmount = discountableAmount * (dc.discount_value / 100);
+          } else {
+            discountAmount = Math.min(dc.discount_value, discountableAmount);
+          }
+          discountAmount = Math.round(discountAmount * 100) / 100;
+          discountCodeId = dc.id;
+          // Increment usage
+          await withRetry(() => base44.asServiceRole.entities.DiscountCode.update(dc.id, { times_used: (dc.times_used || 0) + 1 }), 'incr discount usage');
+        }
+      }
+    }
+
+    let totalAmount = Math.max(0, subtotalAmount - discountAmount);
     const isFree = totalAmount === 0;
     const orderNumber = generateOrderNumber();
 
@@ -146,7 +190,8 @@ Deno.serve(async (req) => {
       // ── PAID ORDER FLOW ──
       return await initiatePaidOrder(base44, {
         draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
-        send_all_to_buyer: !!send_all_to_buyer, origin_url
+        send_all_to_buyer: !!send_all_to_buyer, origin_url,
+        discountAmount, discountCode: discount_code,
       });
     }
 
@@ -328,7 +373,7 @@ async function completeFreeOrder(base44, ctx) {
 
 async function initiatePaidOrder(base44, ctx) {
   const { draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
-          send_all_to_buyer, origin_url } = ctx;
+          send_all_to_buyer, origin_url, discountAmount = 0, discountCode = '' } = ctx;
 
   // Create pending order (no tickets yet)
   const order = await withRetry(() => base44.asServiceRole.entities.Order.create({
@@ -407,10 +452,23 @@ async function initiatePaidOrder(base44, ctx) {
     };
   });
 
+  // Add discount as coupon if applicable
+  let discounts = [];
+  if (discountAmount > 0) {
+    const coupon = await stripe.coupons.create({
+      amount_off: Math.round(discountAmount * 100),
+      currency: 'aud',
+      duration: 'once',
+      name: discountCode || 'Discount',
+    });
+    discounts = [{ coupon: coupon.id }];
+  }
+
   const baseUrl = origin_url || 'https://ticket-deck.com';
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: lineItems,
+    ...(discounts.length ? { discounts } : {}),
     mode: 'payment',
     success_url: `${baseUrl}/order/${orderNumber}?payment=success`,
     cancel_url: `${baseUrl}/event/${event.slug}?payment=cancelled`,

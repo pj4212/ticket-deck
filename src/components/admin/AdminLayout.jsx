@@ -7,7 +7,7 @@ import WorkspaceSwitcher from '@/components/admin/WorkspaceSwitcher';
 import { 
   LayoutDashboard, Calendar, Users, Settings, BarChart3, 
   ChevronLeft, ChevronRight, Menu, LogOut, X, FolderOpen, Mail, ScanLine, Ticket, Zap, History, ShieldAlert, Building2, Crown,
-  Plug, Webhook, FileText, ShoppingCart, Globe, Code, MapPin
+  Plug, Webhook, FileText, ShoppingCart, Globe, Code, MapPin, Tag, UserPlus
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { path: '/admin/events', label: 'Events', icon: Calendar, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/templates', label: 'Templates', icon: FileText, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/orders', label: 'Orders', icon: ShoppingCart, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/discount-codes', label: 'Discount Codes', icon: Tag, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/waitlist', label: 'Waitlist', icon: UserPlus, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/past-sessions', label: 'Past Events', icon: History, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/reports', label: 'Reports', icon: BarChart3, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/venues', label: 'Venues', icon: MapPin, roles: ['super_admin', 'event_admin'] },

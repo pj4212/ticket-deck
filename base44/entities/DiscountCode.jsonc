@@ -1,0 +1,79 @@
+{
+  "name": "DiscountCode",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "code": {
+      "type": "string",
+      "title": "Code"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "discount_type": {
+      "type": "string",
+      "title": "Discount Type",
+      "enum": [
+        "percentage",
+        "fixed_amount"
+      ]
+    },
+    "discount_value": {
+      "type": "number",
+      "title": "Discount Value"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "default": "AUD"
+    },
+    "usage_limit": {
+      "type": "number",
+      "title": "Total Usage Limit"
+    },
+    "per_order_limit": {
+      "type": "number",
+      "title": "Per Order Limit",
+      "default": 1
+    },
+    "times_used": {
+      "type": "number",
+      "title": "Times Used",
+      "default": 0
+    },
+    "valid_from": {
+      "type": "string",
+      "title": "Valid From",
+      "format": "date-time"
+    },
+    "valid_until": {
+      "type": "string",
+      "title": "Valid Until",
+      "format": "date-time"
+    },
+    "applicable_event_ids_json": {
+      "type": "string",
+      "title": "Applicable Event IDs (JSON)"
+    },
+    "applicable_ticket_type_ids_json": {
+      "type": "string",
+      "title": "Applicable Ticket Type IDs (JSON)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    }
+  },
+  "required": [
+    "workspace_id",
+    "code",
+    "discount_type",
+    "discount_value"
+  ]
+}

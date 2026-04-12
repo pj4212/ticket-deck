@@ -12,6 +12,8 @@ import TicketSelector from '@/components/booking/TicketSelector';
 import BuyerForm from '@/components/booking/BuyerForm';
 import AttendeeForm from '@/components/booking/AttendeeForm';
 import OrderSummary from '@/components/booking/OrderSummary';
+import DiscountCodeInput from '@/components/booking/DiscountCodeInput';
+import WaitlistForm from '@/components/booking/WaitlistForm';
 import WaiverTerms from '@/components/booking/WaiverTerms';
 import { validateCheckout } from '@/components/booking/CheckoutValidation';
 
@@ -47,6 +49,9 @@ export default function EventPage() {
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+
+  // Discount
+  const [appliedDiscount, setAppliedDiscount] = useState(null);
 
   // Validation errors
   const [buyerErrors, setBuyerErrors] = useState({});
@@ -268,6 +273,7 @@ export default function EventPage() {
       waiver_accepted: waiverAccepted || false,
       terms_accepted: termsAccepted || false,
       marketing_opt_in: marketingOptIn || false,
+      discount_code: appliedDiscount?.code || null,
     });
 
     if (checkoutResult.data.error) {
@@ -338,13 +344,37 @@ export default function EventPage() {
       {/* Status banner */}
       <EventStatusBanner event={event} ticketTypes={ticketTypes} />
 
+      {/* Event-level waitlist if all sold out */}
+      {eventAvailable && ticketTypes.length > 0 && ticketTypes.filter(tt => tt.is_active).every(tt => {
+        if (tt.capacity_limit == null) return false;
+        return (tt.quantity_sold || 0) + (tt.quantity_reserved || 0) >= tt.capacity_limit;
+      }) && (
+        <div className="mt-6">
+          <WaitlistForm eventId={event.id} workspaceId={event.workspace_id} />
+        </div>
+      )}
+
       {!eventAvailable ? null : (
         <div className="space-y-8 mt-6">
           {/* 1. Ticket Selection */}
-          <TicketSelector ticketTypes={ticketTypes} selections={selections} onSelectionsChange={setSelections} />
+          <TicketSelector
+            ticketTypes={ticketTypes}
+            selections={selections}
+            onSelectionsChange={setSelections}
+            eventId={event.id}
+            workspaceId={event.workspace_id}
+          />
+
+          {/* Discount Code */}
+          <DiscountCodeInput
+            eventId={event.id}
+            ticketTypeIds={Object.keys(selections).filter(id => selections[id] > 0)}
+            onDiscountApplied={setAppliedDiscount}
+            onDiscountRemoved={() => setAppliedDiscount(null)}
+          />
 
           {/* 2. Live Order Summary */}
-          <OrderSummary selections={selections} ticketTypes={ticketTypes} />
+          <OrderSummary selections={selections} ticketTypes={ticketTypes} discount={appliedDiscount} />
 
           {totalTickets > 0 && (
             <>
