@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 
 const FEATURES = [
-  { icon: DollarSign, title: 'Lowest fees in AU', desc: 'From 0.4% per ticket. No flat fees, no monthly subscriptions.' },
+  { icon: DollarSign, title: 'Lowest fees in AU', desc: 'Free for ≤50 tickets/mo. From 0.6% after that. No subscriptions.' },
   { icon: Ticket, title: 'Unlimited ticket types', desc: 'In-person, online, hybrid. Group tickets, early birds, and more.' },
   { icon: QrCode, title: 'QR check-in app', desc: 'Scan attendees at the door with our mobile check-in scanner.' },
   { icon: Video, title: 'Zoom integration', desc: 'Auto-create Zoom webinars and send join links to attendees.' },
