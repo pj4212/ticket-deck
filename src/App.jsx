@@ -38,6 +38,10 @@ const EmailTesting = React.lazy(() => import('./pages/admin/EmailTesting'));
 const LoadTest = React.lazy(() => import('./pages/admin/LoadTest'));
 const RateLimitLogs = React.lazy(() => import('./pages/admin/RateLimitLogs'));
 const WorkspaceManagement = React.lazy(() => import('./pages/admin/WorkspaceManagement'));
+const EmailManagement = React.lazy(() => import('./pages/admin/EmailManagement'));
+const WebhookSettings = React.lazy(() => import('./pages/admin/WebhookSettings'));
+const CustomFieldManager = React.lazy(() => import('./pages/admin/CustomFieldManager'));
+const IntegrationSettings = React.lazy(() => import('./pages/admin/IntegrationSettings'));
 const AccountSettings = React.lazy(() => import('./components/AccountSettings'));
 
 // Platform admin pages
@@ -111,6 +115,10 @@ const AuthenticatedApp = () => {
             <Route path="settings/load-test" element={<LoadTest />} />
             <Route path="settings/rate-limit-logs" element={<RateLimitLogs />} />
             <Route path="settings/workspaces" element={<WorkspaceManagement />} />
+            <Route path="settings/integrations" element={<IntegrationSettings />} />
+            <Route path="settings/emails" element={<EmailManagement />} />
+            <Route path="settings/webhooks" element={<WebhookSettings />} />
+            <Route path="settings/custom-fields" element={<CustomFieldManager />} />
           </Route>
           <Route path="/scanner" element={<ScannerLayout />}>
             <Route index element={<ScannerHome />} />

@@ -1,0 +1,46 @@
+{
+  "name": "WebhookEndpoint",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "url": {
+      "type": "string",
+      "title": "Endpoint URL"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "event_types": {
+      "type": "string",
+      "title": "Event Types (JSON)"
+    },
+    "secret": {
+      "type": "string",
+      "title": "Signing Secret"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    },
+    "last_triggered_at": {
+      "type": "string",
+      "title": "Last Triggered At",
+      "format": "date-time"
+    },
+    "failure_count": {
+      "type": "number",
+      "title": "Failure Count",
+      "default": 0
+    }
+  },
+  "required": [
+    "workspace_id",
+    "url"
+  ]
+}

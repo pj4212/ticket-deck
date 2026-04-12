@@ -103,6 +103,16 @@ Deno.serve(async (req) => {
       await handlePaymentFailed(base44, event.data.object);
     }
 
+    // ── charge.refunded — sync refund state from Stripe ──
+    if (event.type === 'charge.refunded') {
+      await handleChargeRefunded(base44, event.data.object, workspaceId);
+    }
+
+    // ── charge.refund.updated — partial refund sync ──
+    if (event.type === 'charge.refund.updated') {
+      await handleChargeRefunded(base44, event.data.object, workspaceId);
+    }
+
     return Response.json({ received: true });
   } catch (error) {
     console.error("Stripe webhook error:", error);
@@ -271,7 +281,57 @@ async function handlePaymentFailed(base44, session) {
   console.log("Order payment failed, resources released:", orderId);
 }
 
-// ── Email sending (shared with createCheckout) ──
+// ── charge.refunded handler ──
+
+async function handleChargeRefunded(base44, charge, workspaceId) {
+  const piId = charge.payment_intent;
+  if (!piId) return;
+
+  const orders = await base44.asServiceRole.entities.Order.filter({ stripe_payment_intent_id: piId });
+  if (!orders.length) { console.log('No order found for refunded PI:', piId); return; }
+  const order = orders[0];
+
+  // Determine if fully or partially refunded
+  const amountRefunded = (charge.amount_refunded || 0) / 100;
+  const totalAmount = order.total_amount || 0;
+  const isFullRefund = amountRefunded >= totalAmount;
+
+  if (isFullRefund && order.payment_status !== 'refunded') {
+    await withRetry(() => base44.asServiceRole.entities.Order.update(order.id, {
+      payment_status: 'refunded', order_status: 'cancelled',
+    }), 'refund order');
+
+    // Cancel all tickets
+    const tickets = await base44.asServiceRole.entities.Ticket.filter({ order_id: order.id });
+    for (const t of tickets) {
+      if (t.ticket_status === 'active') {
+        await withRetry(() => base44.asServiceRole.entities.Ticket.update(t.id, { ticket_status: 'refunded' }), `refund ticket ${t.id}`);
+      }
+    }
+    console.log('Order fully refunded via webhook:', order.order_number);
+  } else if (!isFullRefund && order.payment_status !== 'partially_refunded') {
+    await withRetry(() => base44.asServiceRole.entities.Order.update(order.id, {
+      payment_status: 'partially_refunded',
+    }), 'partial refund order');
+    console.log('Order partially refunded via webhook:', order.order_number, 'amount:', amountRefunded);
+  }
+
+  // Audit log
+  await base44.asServiceRole.entities.AuditLog.create({
+    workspace_id: workspaceId || order.workspace_id, actor_type: 'webhook',
+    action_type: isFullRefund ? 'refund' : 'partial_refund', entity_type: 'Order', entity_id: order.id,
+    metadata_json: JSON.stringify({ amount_refunded: amountRefunded, charge_id: charge.id }),
+    severity: 'warning',
+  }).catch(() => {});
+
+  // Dispatch webhook event
+  await base44.asServiceRole.functions.invoke('webhookDispatch', {
+    action: 'dispatch', workspace_id: workspaceId || order.workspace_id,
+    event_type: 'order.refunded', payload: { order_id: order.id, order_number: order.order_number, amount_refunded: amountRefunded },
+  }).catch(() => {});
+}
+
+// ── Email sending (workspace-branded) ──
 
 function fmtDate(d) {
   if (!d) return '';
@@ -283,34 +343,32 @@ function fmtTime(d) {
 }
 
 async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBuyer) {
-  const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
-
-  // Order receipt
-  const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
-  const rows = tickets.map(t => {
-    const tt = ttMap[t.ticket_type_id];
-    const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
-    return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
-  }).join('');
-  const receiptHtml = `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">Order #${order.order_number}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Your booking for <strong>${event.name}</strong> is confirmed.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="2" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
-
-  await base44.asServiceRole.integrations.Core.SendEmail({
-    to: order.buyer_email, subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
-    body: receiptHtml, from_name: 'Session Pass',
-  });
-
-  // Ticket emails
-  for (const ticket of tickets) {
-    const tt = ttMap[ticket.ticket_type_id];
-    const isOnline = ticket.attendance_mode === 'online';
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ticket.qr_code_hash)}`;
-    const qrBlock = !isOnline ? `<div style="text-align:center;margin:16px 0;padding:16px;border:2px solid #e2e8f0;border-radius:12px"><img src="${qrUrl}" width="240" height="240" style="display:block;margin:auto"/><p style="margin:8px 0 0;font-size:12px;color:#94a3b8">Scan at door for entry</p></div>` : '';
-    const recipient = sendAllToBuyer ? order.buyer_email : ticket.attendee_email;
-    const ticketHtml = `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Your Ticket</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">${event.name}</p></div><div style="padding:24px"><p>Hi <strong>${ticket.attendee_first_name}</strong>,</p><p><strong>Type:</strong> ${tt?.name||'General'} (${isOnline?'Online':'In-Person'})<br><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p>${qrBlock}</div></div>`;
+  // Use the new workspace email system
+  try {
+    await base44.asServiceRole.functions.invoke('sendWorkspaceEmail', {
+      action: 'send_order_emails', order_id: order.id, send_all_to_buyer: sendAllToBuyer,
+    });
+  } catch (e) {
+    console.error('Workspace email fallback, using inline:', e.message);
+    // Inline fallback
+    const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
+    const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
+    const rows = tickets.map(t => {
+      const tt = ttMap[t.ticket_type_id];
+      const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
+      return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
+    }).join('');
+    const receiptHtml = `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Your booking for <strong>${event.name}</strong> is confirmed.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="2" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
 
     await base44.asServiceRole.integrations.Core.SendEmail({
-      to: recipient, subject: `Your ${isOnline ? 'Online' : 'In-Person'} Ticket — ${event.name}`,
-      body: ticketHtml, from_name: 'Session Pass',
+      to: order.buyer_email, subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
+      body: receiptHtml, from_name: 'Session Pass',
     });
   }
+
+  // Dispatch webhook
+  await base44.asServiceRole.functions.invoke('webhookDispatch', {
+    action: 'dispatch', workspace_id: order.workspace_id,
+    event_type: 'order.completed', payload: { order_id: order.id, order_number: order.order_number, total: order.total_amount },
+  }).catch(() => {});
 }

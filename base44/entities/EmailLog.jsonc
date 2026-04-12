@@ -1,0 +1,78 @@
+{
+  "name": "EmailLog",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "email_type": {
+      "type": "string",
+      "title": "Email Type",
+      "enum": [
+        "order_receipt",
+        "ticket_confirmation",
+        "event_reminder_1h",
+        "event_reminder_5m",
+        "event_update",
+        "sales_closing",
+        "organiser_alert",
+        "custom"
+      ]
+    },
+    "recipient_email": {
+      "type": "string",
+      "title": "Recipient Email",
+      "format": "email"
+    },
+    "subject": {
+      "type": "string",
+      "title": "Subject"
+    },
+    "related_entity_type": {
+      "type": "string",
+      "title": "Related Entity Type"
+    },
+    "related_entity_id": {
+      "type": "string",
+      "title": "Related Entity ID"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "queued",
+        "sent",
+        "failed",
+        "bounced"
+      ],
+      "default": "queued"
+    },
+    "provider_message_id": {
+      "type": "string",
+      "title": "Provider Message ID"
+    },
+    "error_message": {
+      "type": "string",
+      "title": "Error Message"
+    },
+    "retry_count": {
+      "type": "number",
+      "title": "Retry Count",
+      "default": 0
+    },
+    "sent_at": {
+      "type": "string",
+      "title": "Sent At",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "email_type",
+    "recipient_email",
+    "subject",
+    "status"
+  ]
+}

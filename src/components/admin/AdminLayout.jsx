@@ -6,7 +6,8 @@ import useWorkspace from '@/hooks/useWorkspace';
 import WorkspaceSwitcher from '@/components/admin/WorkspaceSwitcher';
 import { 
   LayoutDashboard, Calendar, Users, Settings, BarChart3, 
-  ChevronLeft, ChevronRight, Menu, LogOut, X, FolderOpen, Mail, ScanLine, Ticket, Zap, History, ShieldAlert, Building2, Crown
+  ChevronLeft, ChevronRight, Menu, LogOut, X, FolderOpen, Mail, ScanLine, Ticket, Zap, History, ShieldAlert, Building2, Crown,
+  Plug, Webhook, FileText
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -15,6 +16,10 @@ const NAV_ITEMS = [
   { path: '/admin/events', label: 'Sessions', icon: Calendar, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/past-sessions', label: 'Past Sessions', icon: History, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/reports', label: 'Reports', icon: BarChart3, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/settings/emails', label: 'Email Log', icon: Mail, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/settings/integrations', label: 'Integrations', icon: Plug, roles: ['super_admin'] },
+  { path: '/admin/settings/custom-fields', label: 'Custom Fields', icon: FileText, roles: ['super_admin'] },
+  { path: '/admin/settings/webhooks', label: 'Webhooks', icon: Webhook, roles: ['super_admin'] },
   { path: '/admin/settings/users', label: 'Users', icon: Users, roles: ['super_admin'] },
   { path: '/admin/settings/platinum-leaders', label: 'Platinum Leaders', icon: Settings, roles: ['super_admin'] },
   { path: '/admin/settings/email-testing', label: 'Email Testing', icon: Mail, roles: ['admin'] },

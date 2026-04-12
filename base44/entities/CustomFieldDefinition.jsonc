@@ -49,6 +49,25 @@
       "type": "string",
       "title": "Help Text"
     },
+    "is_reportable": {
+      "type": "boolean",
+      "title": "Include in Reports",
+      "default": true
+    },
+    "preset_category": {
+      "type": "string",
+      "title": "Preset Category",
+      "enum": [
+        "none",
+        "demographics",
+        "marketing",
+        "dietary",
+        "accessibility",
+        "membership",
+        "custom"
+      ],
+      "default": "none"
+    },
     "sort_order": {
       "type": "number",
       "title": "Sort Order",
