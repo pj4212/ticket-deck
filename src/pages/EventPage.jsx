@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Lock, ShieldCheck } from 'lucide-react';
 import EventHeader from '@/components/public/EventHeader';
 import EventDescription from '@/components/public/EventDescription';
 import EventStatusBanner from '@/components/public/EventStatusBanner';
@@ -12,6 +12,8 @@ import TicketSelector from '@/components/booking/TicketSelector';
 import BuyerForm from '@/components/booking/BuyerForm';
 import AttendeeForm from '@/components/booking/AttendeeForm';
 import OrderSummary from '@/components/booking/OrderSummary';
+import WaiverTerms from '@/components/booking/WaiverTerms';
+import { validateCheckout } from '@/components/booking/CheckoutValidation';
 
 const BUYER_KEY = 'sp_buyer';
 
@@ -35,11 +37,22 @@ export default function EventPage() {
 
   // Checkout state
   const [selections, setSelections] = useState({});
-  const [buyer, setBuyer] = useState({ first_name: '', last_name: '', email: '', ...loadSavedBuyer() });
+  const [buyer, setBuyer] = useState({ first_name: '', last_name: '', email: '', phone: '', ...loadSavedBuyer() });
   const [attendees, setAttendees] = useState([]);
   const [sendAllToBuyer, setSendAllToBuyer] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+
+  // Waiver & terms state
+  const [waiverAccepted, setWaiverAccepted] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+
+  // Validation errors
+  const [buyerErrors, setBuyerErrors] = useState({});
+  const [attendeeErrors, setAttendeeErrors] = useState([]);
+  const [termsErrors, setTermsErrors] = useState({});
+  const errorRef = useRef(null);
 
   useEffect(() => {
     async function load() {
@@ -180,29 +193,31 @@ export default function EventPage() {
     return true;
   };
 
-  const validateForm = () => {
-    if (!buyer.first_name || !buyer.last_name || !buyer.email) return 'Please fill in all buyer details.';
-    if (!/\S+@\S+\.\S+/.test(buyer.email)) return 'Please enter a valid buyer email.';
-    for (let i = 0; i < attendees.length; i++) {
-      const a = attendees[i];
-      if (!a.first_name || !a.last_name) return `Please fill in the name for Ticket ${i + 1}.`;
-      if (!sendAllToBuyer || i === 0) {
-        if (!a.email) return `Please fill in the email for Ticket ${i + 1}.`;
-        if (!/\S+@\S+\.\S+/.test(a.email)) return `Please enter a valid email for Ticket ${i + 1}.`;
-      }
-      // Validate required custom fields
-      for (const field of customFields) {
-        if (field._required && !a.custom_fields?.[field.field_key]) {
-          return `Please fill in "${field.label}" for Ticket ${i + 1}.`;
-        }
-      }
-    }
-    return null;
+  const runValidation = () => {
+    const result = validateCheckout({
+      buyer,
+      attendees,
+      sendAllToBuyer,
+      customFields,
+      waiverText: event?.waiver_text,
+      waiverAccepted,
+      termsText: event?.terms_text,
+      termsAccepted,
+    });
+    setBuyerErrors(result.buyerErrors);
+    setAttendeeErrors(result.attendeeErrors);
+    setTermsErrors(result.termsErrors);
+    return result;
   };
 
   const handleCheckout = async () => {
-    const err = validateForm();
-    if (err) { setSubmitError(err); return; }
+    const result = runValidation();
+    if (!result.valid) {
+      setSubmitError(result.firstErrorMessage);
+      // Scroll to first error
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
 
@@ -237,7 +252,7 @@ export default function EventPage() {
     }
 
     // Create checkout
-    const result = await base44.functions.invoke('createCheckout', {
+    const checkoutResult = await base44.functions.invoke('createCheckout', {
       buyer: { first_name: buyer.first_name, last_name: buyer.last_name, email: buyer.email, phone: buyer.phone || '' },
       attendees: attendees.map(a => ({
         first_name: a.first_name,
@@ -250,23 +265,26 @@ export default function EventPage() {
       origin_url: window.location.origin,
       send_all_to_buyer: sendAllToBuyer,
       access_password: event.visibility_mode === 'password_protected' ? event.access_password : undefined,
+      waiver_accepted: waiverAccepted || false,
+      terms_accepted: termsAccepted || false,
+      marketing_opt_in: marketingOptIn || false,
     });
 
-    if (result.data.error) {
-      setSubmitError(result.data.error);
+    if (checkoutResult.data.error) {
+      setSubmitError(checkoutResult.data.error);
       setSubmitting(false);
       return;
     }
 
     localStorage.setItem(BUYER_KEY, JSON.stringify(buyer));
-    if (result.data.manage_token) {
-      localStorage.setItem(`sp_mt_${result.data.order_number}`, result.data.manage_token);
+    if (checkoutResult.data.manage_token) {
+      localStorage.setItem(`sp_mt_${checkoutResult.data.order_number}`, checkoutResult.data.manage_token);
     }
 
-    if (result.data.payment_required) {
-      window.location.href = result.data.checkout_url;
+    if (checkoutResult.data.payment_required) {
+      window.location.href = checkoutResult.data.checkout_url;
     } else {
-      window.location.href = `/order/${result.data.order_number}`;
+      window.location.href = `/order/${checkoutResult.data.order_number}`;
     }
   };
 
@@ -322,25 +340,46 @@ export default function EventPage() {
 
       {!eventAvailable ? null : (
         <div className="space-y-8 mt-6">
+          {/* 1. Ticket Selection */}
           <TicketSelector ticketTypes={ticketTypes} selections={selections} onSelectionsChange={setSelections} />
+
+          {/* 2. Live Order Summary */}
           <OrderSummary selections={selections} ticketTypes={ticketTypes} />
 
           {totalTickets > 0 && (
             <>
-              <BuyerForm buyer={buyer} onChange={setBuyer} />
+              {/* 3. Buyer Details */}
+              <BuyerForm buyer={buyer} onChange={setBuyer} errors={buyerErrors} />
 
+              {/* Send all tickets toggle */}
               {attendees.length > 1 && (
-                <label className="flex items-start gap-3 p-4 border rounded-lg bg-card cursor-pointer">
-                  <input type="checkbox" checked={sendAllToBuyer} onChange={e => setSendAllToBuyer(e.target.checked)} className="mt-1 h-4 w-4 rounded border-input" />
-                  <div className="text-sm"><span className="font-medium">Send all tickets to my email</span><p className="text-muted-foreground mt-0.5">All tickets will be sent to {buyer.email || 'the buyer\'s email'}.</p></div>
+                <label className="flex items-start gap-3 p-4 border rounded-xl bg-card cursor-pointer hover:border-primary/30 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={sendAllToBuyer}
+                    onChange={e => setSendAllToBuyer(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-input accent-primary shrink-0"
+                  />
+                  <div className="text-sm">
+                    <span className="font-medium text-foreground">Send all tickets to my email</span>
+                    <p className="text-muted-foreground mt-0.5">
+                      All tickets will be sent to {buyer.email || 'your email'}. Attendees won't receive individual emails.
+                    </p>
+                  </div>
                 </label>
               )}
 
+              {/* 4. Attendee Details */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Attendee Details</h3>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-foreground">Attendee Details</h2>
+                </div>
+                <p className="text-sm text-muted-foreground -mt-2">
+                  Please provide details for each ticket holder.
+                </p>
                 {attendees.map((att, i) => (
                   <AttendeeForm
-                    key={i}
+                    key={`${att.ticket_type_id}-${i}`}
                     index={i}
                     total={attendees.length}
                     ticketTypeName={att.ticketTypeName}
@@ -350,17 +389,57 @@ export default function EventPage() {
                     isBuyerSlot={i === 0}
                     emailOptional={sendAllToBuyer && i > 0}
                     customFields={customFields}
+                    errors={attendeeErrors[i] || {}}
                   />
                 ))}
               </div>
 
-              {submitError && <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>}
+              {/* 5. Waivers, Terms, Marketing */}
+              <WaiverTerms
+                waiverText={event.waiver_text}
+                termsText={event.terms_text}
+                showMarketingOptIn={event.show_marketing_opt_in}
+                marketingLabel={event.marketing_opt_in_label}
+                waiverAccepted={waiverAccepted}
+                termsAccepted={termsAccepted}
+                marketingOptIn={marketingOptIn}
+                onWaiverChange={setWaiverAccepted}
+                onTermsChange={setTermsAccepted}
+                onMarketingChange={setMarketingOptIn}
+                errors={termsErrors}
+              />
 
-              <Button size="lg" className="w-full" onClick={handleCheckout} disabled={submitting}>
-                {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing...</> :
-                  Object.entries(selections).some(([id, qty]) => { const tt = ticketTypes.find(t => t.id === id); return qty > 0 && tt?.price > 0; })
-                    ? 'Proceed to Payment' : 'Complete Booking'}
-              </Button>
+              {/* Error display */}
+              {submitError && (
+                <div ref={errorRef}>
+                  <Alert variant="destructive"><AlertDescription>{submitError}</AlertDescription></Alert>
+                </div>
+              )}
+
+              {/* Checkout button */}
+              <div className="space-y-3">
+                <Button
+                  size="lg"
+                  className="w-full h-12 text-base font-semibold gap-2"
+                  onClick={handleCheckout}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Processing...</>
+                  ) : Object.entries(selections).some(([id, qty]) => {
+                    const tt = ticketTypes.find(t => t.id === id);
+                    return qty > 0 && tt?.price > 0;
+                  }) ? (
+                    <><Lock className="h-4 w-4" />Proceed to Payment</>
+                  ) : (
+                    <><ShieldCheck className="h-4 w-4" />Complete Booking</>
+                  )}
+                </Button>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                  <span>Secure checkout · Payments processed by Stripe</span>
+                </div>
+              </div>
             </>
           )}
         </div>

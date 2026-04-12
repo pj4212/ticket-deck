@@ -134,6 +134,23 @@
       "title": "Sales Close At",
       "format": "date-time"
     },
+    "waiver_text": {
+      "type": "string",
+      "title": "Waiver Text"
+    },
+    "terms_text": {
+      "type": "string",
+      "title": "Terms & Conditions Text"
+    },
+    "show_marketing_opt_in": {
+      "type": "boolean",
+      "title": "Show Marketing Opt-In",
+      "default": false
+    },
+    "marketing_opt_in_label": {
+      "type": "string",
+      "title": "Marketing Opt-In Label"
+    },
     "status": {
       "type": "string",
       "title": "Status",

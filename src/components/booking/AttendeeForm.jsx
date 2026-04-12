@@ -1,112 +1,113 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Monitor, MapPin, UserCheck } from "lucide-react";
+import CustomFieldInput from "./CustomFieldInput";
 
 export default function AttendeeForm({
   index, total, ticketTypeName, attendanceMode, attendee, onChange,
-  isBuyerSlot = false, emailOptional = false, customFields = []
+  isBuyerSlot = false, emailOptional = false, customFields = [],
+  errors = {}
 }) {
   const update = (field, value) => onChange({ [field]: value });
   const updateCustom = (key, value) => {
     onChange({ custom_fields: { ...(attendee.custom_fields || {}), [key]: value } });
   };
 
-  const modeLabel = attendanceMode === 'online' ? 'Online' : 'In-Person';
+  const isOnline = attendanceMode === 'online';
+  const ModeIcon = isOnline ? Monitor : MapPin;
+  const modeLabel = isOnline ? 'Online' : 'In-Person';
+  const modeColor = isOnline ? 'text-blue-500' : 'text-emerald-500';
 
   return (
-    <div className="border rounded-lg p-4 space-y-4 bg-card">
-      <div className="flex items-center justify-between">
-        <h4 className="font-semibold text-sm">
-          Ticket {index + 1} of {total} — {ticketTypeName} ({modeLabel})
-        </h4>
-      </div>
-
-      {isBuyerSlot && <p className="text-sm text-muted-foreground -mt-2">Auto-filled from buyer details</p>}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs">First Name *</Label>
-          <Input value={attendee.first_name} onChange={e => update('first_name', e.target.value)} disabled={isBuyerSlot} />
+    <div className={`border rounded-xl overflow-hidden transition-colors ${
+      errors._hasErrors ? 'border-destructive/50' : isBuyerSlot ? 'border-primary/30' : 'border-border'
+    }`}>
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-muted/50 border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-foreground">
+            Ticket {index + 1}
+            {total > 1 && <span className="text-muted-foreground font-normal"> of {total}</span>}
+          </span>
+          <span className="text-xs text-muted-foreground">— {ticketTypeName}</span>
         </div>
-        <div>
-          <Label className="text-xs">Last Name *</Label>
-          <Input value={attendee.last_name} onChange={e => update('last_name', e.target.value)} disabled={isBuyerSlot} />
+        <div className="flex items-center gap-1.5">
+          <ModeIcon className={`h-3.5 w-3.5 ${modeColor}`} />
+          <Badge variant="outline" className="text-xs">{modeLabel}</Badge>
         </div>
       </div>
 
-      {!emailOptional && (
-        <div>
-          <Label className="text-xs">Email *</Label>
-          <Input type="email" value={attendee.email} onChange={e => update('email', e.target.value)} disabled={isBuyerSlot} />
+      <div className="p-4 space-y-3">
+        {isBuyerSlot && (
+          <div className="flex items-center gap-2 text-sm text-primary bg-primary/5 rounded-lg px-3 py-2 -mt-1 mb-1">
+            <UserCheck className="h-4 w-4 shrink-0" />
+            <span>Auto-filled from your details above</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-sm">First Name <span className="text-destructive">*</span></Label>
+            <Input
+              value={attendee.first_name}
+              onChange={e => update('first_name', e.target.value)}
+              disabled={isBuyerSlot}
+              className={errors.first_name ? 'border-destructive' : ''}
+              placeholder="First name"
+            />
+            {errors.first_name && <p className="text-xs text-destructive mt-1">{errors.first_name}</p>}
+          </div>
+          <div>
+            <Label className="text-sm">Last Name <span className="text-destructive">*</span></Label>
+            <Input
+              value={attendee.last_name}
+              onChange={e => update('last_name', e.target.value)}
+              disabled={isBuyerSlot}
+              className={errors.last_name ? 'border-destructive' : ''}
+              placeholder="Last name"
+            />
+            {errors.last_name && <p className="text-xs text-destructive mt-1">{errors.last_name}</p>}
+          </div>
         </div>
-      )}
 
-      {/* Custom fields */}
-      {customFields.map(field => (
-        <CustomFieldInput key={field.id} field={field} value={attendee.custom_fields?.[field.field_key] || ''} onChange={v => updateCustom(field.field_key, v)} />
-      ))}
-    </div>
-  );
-}
+        {(!emailOptional || isBuyerSlot) && (
+          <div>
+            <Label className="text-sm">Email <span className="text-destructive">*</span></Label>
+            <Input
+              type="email"
+              value={attendee.email}
+              onChange={e => update('email', e.target.value)}
+              disabled={isBuyerSlot}
+              className={errors.email ? 'border-destructive' : ''}
+              placeholder="attendee@example.com"
+            />
+            {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
+          </div>
+        )}
 
-function CustomFieldInput({ field, value, onChange }) {
-  const required = field._required;
-  const label = `${field.label}${required ? ' *' : ''}`;
-
-  switch (field.field_type) {
-    case 'dropdown':
-      return (
-        <div>
-          <Label className="text-xs">{label}</Label>
-          <Select value={value} onValueChange={onChange}>
-            <SelectTrigger><SelectValue placeholder={`Select ${field.label}...`} /></SelectTrigger>
-            <SelectContent>
-              {(field._options || []).map(opt => (
-                <SelectItem key={opt.id} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {field.help_text && <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>}
-        </div>
-      );
-    case 'radio':
-      return (
-        <div>
-          <Label className="text-xs">{label}</Label>
-          <div className="flex flex-wrap gap-3 mt-1">
-            {(field._options || []).map(opt => (
-              <label key={opt.id} className="flex items-center gap-1.5 cursor-pointer text-sm">
-                <input type="radio" name={field.field_key} checked={value === opt.value} onChange={() => onChange(opt.value)} className="accent-primary" />
-                {opt.label}
-              </label>
+        {/* Custom fields */}
+        {customFields.length > 0 && (
+          <div className="space-y-3 pt-2 border-t border-border">
+            {customFields.map(field => (
+              <CustomFieldInput
+                key={field.id}
+                field={field}
+                value={attendee.custom_fields?.[field.field_key] || ''}
+                onChange={v => updateCustom(field.field_key, v)}
+                error={errors[`cf_${field.field_key}`]}
+              />
             ))}
           </div>
-          {field.help_text && <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>}
-        </div>
-      );
-    case 'checkbox':
-      return (
-        <label className="flex items-start gap-2 cursor-pointer">
-          <input type="checkbox" checked={value === 'true' || value === true} onChange={e => onChange(e.target.checked ? 'true' : '')} className="mt-1 h-4 w-4 rounded border-input accent-primary" />
-          <div><span className="text-sm font-medium">{field.label}</span>{field.help_text && <p className="text-xs text-muted-foreground">{field.help_text}</p>}</div>
-        </label>
-      );
-    case 'textarea':
-      return (
-        <div>
-          <Label className="text-xs">{label}</Label>
-          <Textarea value={value} onChange={e => onChange(e.target.value)} rows={2} />
-          {field.help_text && <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>}
-        </div>
-      );
-    default:
-      return (
-        <div>
-          <Label className="text-xs">{label}</Label>
-          <Input type={field.field_type === 'email' ? 'email' : field.field_type === 'number' ? 'number' : 'text'} value={value} onChange={e => onChange(e.target.value)} />
-          {field.help_text && <p className="text-xs text-muted-foreground mt-1">{field.help_text}</p>}
-        </div>
-      );
-  }
+        )}
+
+        {/* Duplicate warning */}
+        {errors._duplicate && (
+          <div className="flex items-center gap-2 text-sm text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
+            <span>⚠️ {errors._duplicate}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

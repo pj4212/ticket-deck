@@ -34,6 +34,21 @@
       "title": "Send All Tickets to Buyer",
       "default": false
     },
+    "waiver_accepted": {
+      "type": "boolean",
+      "title": "Waiver Accepted",
+      "default": false
+    },
+    "terms_accepted": {
+      "type": "boolean",
+      "title": "Terms Accepted",
+      "default": false
+    },
+    "marketing_opt_in": {
+      "type": "boolean",
+      "title": "Marketing Opt-In",
+      "default": false
+    },
     "status": {
       "type": "string",
       "title": "Status",
