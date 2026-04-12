@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2, Search, RefreshCw, ShoppingCart } from 'lucide-react';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/admin/OrderStatusBadge';
+import OrderSourceBadge from '@/components/admin/OrderSourceBadge';
 import OrderDetailDialog from '@/components/admin/OrderDetailDialog';
 
 export default function OrderManagement() {
@@ -22,6 +23,7 @@ export default function OrderManagement() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const loadData = async (isRefresh = false) => {
@@ -61,6 +63,7 @@ export default function OrderManagement() {
   const filtered = orders.filter(o => {
     if (statusFilter !== 'all' && o.order_status !== statusFilter) return false;
     if (paymentFilter !== 'all' && o.payment_status !== paymentFilter) return false;
+    if (sourceFilter !== 'all' && (o.order_source || 'online') !== sourceFilter) return false;
     if (search) {
       const s = search.toLowerCase();
       const name = `${o.buyer_first_name} ${o.buyer_last_name}`.toLowerCase();
@@ -118,6 +121,16 @@ export default function OrderManagement() {
               <SelectItem value="failed">Failed</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-40 text-xs sm:text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="online">Online</SelectItem>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="box_office">Box Office</SelectItem>
+              <SelectItem value="complimentary">Complimentary</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -137,6 +150,7 @@ export default function OrderManagement() {
             </div>
             <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
               <span>#{o.order_number}</span>
+              <OrderSourceBadge source={o.order_source || 'online'} />
               <span>{events[o.event_id]?.name || '—'}</span>
               <span className="ml-auto font-medium text-foreground">{o.total_amount > 0 ? `$${o.total_amount.toFixed(2)}` : 'Free'}</span>
             </div>
@@ -153,6 +167,7 @@ export default function OrderManagement() {
               <TableHead>Order #</TableHead>
               <TableHead>Buyer</TableHead>
               <TableHead>Event</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Payment</TableHead>
@@ -168,6 +183,7 @@ export default function OrderManagement() {
                   <p className="text-xs text-muted-foreground truncate max-w-[180px]">{o.buyer_email}</p>
                 </TableCell>
                 <TableCell className="text-sm truncate max-w-[160px]">{events[o.event_id]?.name || '—'}</TableCell>
+                <TableCell><OrderSourceBadge source={o.order_source || 'online'} /></TableCell>
                 <TableCell className="text-sm text-muted-foreground">{fmtDate(o.created_date)}</TableCell>
                 <TableCell className="text-sm font-medium">{o.total_amount > 0 ? `$${o.total_amount.toFixed(2)}` : 'Free'}</TableCell>
                 <TableCell><PaymentStatusBadge status={o.payment_status} /></TableCell>
@@ -176,7 +192,7 @@ export default function OrderManagement() {
             ))}
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   <ShoppingCart className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   No orders found
                 </TableCell>

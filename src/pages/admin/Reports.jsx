@@ -215,6 +215,7 @@ export default function Reports() {
           <TabsTrigger value="discounts">Discounts</TabsTrigger>
           <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
           <TabsTrigger value="slots">Time Slots</TabsTrigger>
+          <TabsTrigger value="channels">Sales Channels</TabsTrigger>
           <TabsTrigger value="attendee">Attendee Export</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
         </TabsList>
@@ -553,6 +554,86 @@ export default function Reports() {
                         );
                       })}
                       {timeSlots.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No timed-entry slots</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="channels" className="space-y-3">
+          {(() => {
+            const confirmedOrders = orders.filter(o => o.order_status === 'confirmed' || o.payment_status === 'completed' || o.payment_status === 'free');
+            const sourceGroups = { online: { label: 'Online Checkout', orders: [], revenue: 0, tickets: 0 }, manual: { label: 'Manual / Phone', orders: [], revenue: 0, tickets: 0 }, box_office: { label: 'Box Office', orders: [], revenue: 0, tickets: 0 }, complimentary: { label: 'Complimentary', orders: [], revenue: 0, tickets: 0 } };
+            confirmedOrders.forEach(o => {
+              const src = o.order_source || 'online';
+              if (!sourceGroups[src]) sourceGroups[src] = { label: src, orders: [], revenue: 0, tickets: 0 };
+              sourceGroups[src].orders.push(o);
+              sourceGroups[src].revenue += o.total_amount || 0;
+            });
+            // Count tickets per source
+            const orderSourceMap = {};
+            confirmedOrders.forEach(o => { orderSourceMap[o.id] = o.order_source || 'online'; });
+            activeTickets.forEach(t => {
+              const src = orderSourceMap[t.order_id] || 'online';
+              if (sourceGroups[src]) sourceGroups[src].tickets++;
+            });
+            const channelRows = Object.entries(sourceGroups).filter(([_, v]) => v.orders.length > 0);
+            const payMethodGroups = {};
+            confirmedOrders.forEach(o => {
+              const m = o.payment_method || 'stripe';
+              if (!payMethodGroups[m]) payMethodGroups[m] = { count: 0, revenue: 0 };
+              payMethodGroups[m].count++;
+              payMethodGroups[m].revenue += o.total_amount || 0;
+            });
+            const totalOrders = confirmedOrders.length;
+            const onlineCount = sourceGroups.online.orders.length;
+            const manualCount = totalOrders - onlineCount;
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Orders</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalOrders}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Online</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-blue-400">{onlineCount}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Manual / Box Office / Comp</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-violet-400">{manualCount}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Manual Revenue</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-amber-400">${(sourceGroups.manual.revenue + sourceGroups.box_office.revenue).toFixed(2)}</p></CardContent></Card>
+                </div>
+                <h3 className="font-semibold text-sm mt-4">By Sales Channel</h3>
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(
+                    ['Channel', 'Orders', 'Tickets', 'Revenue'],
+                    channelRows.map(([_, v]) => [v.label, v.orders.length, v.tickets, v.revenue.toFixed(2)]),
+                    'sales-channels.csv'
+                  )}><Download className="h-4 w-4 mr-1" />CSV</Button>
+                </div>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Channel</TableHead><TableHead>Orders</TableHead><TableHead>Tickets</TableHead><TableHead>Revenue</TableHead><TableHead>% of Total</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {channelRows.map(([key, v]) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium">{v.label}</TableCell>
+                          <TableCell>{v.orders.length}</TableCell>
+                          <TableCell>{v.tickets}</TableCell>
+                          <TableCell>${v.revenue.toFixed(2)}</TableCell>
+                          <TableCell>{totalOrders > 0 ? Math.round(v.orders.length / totalOrders * 100) : 0}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <h3 className="font-semibold text-sm mt-6">By Payment Method</h3>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Method</TableHead><TableHead>Orders</TableHead><TableHead>Revenue</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {Object.entries(payMethodGroups).map(([method, data]) => (
+                        <TableRow key={method}>
+                          <TableCell className="font-medium capitalize">{method.replace(/_/g, ' ')}</TableCell>
+                          <TableCell>{data.count}</TableCell>
+                          <TableCell>${data.revenue.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 </div>

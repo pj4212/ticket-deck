@@ -321,6 +321,8 @@ async function completeFreeOrder(base44, ctx) {
     currency: 'AUD',
     payment_status: 'free',
     order_status: 'confirmed',
+    order_source: 'online',
+    payment_method: 'stripe',
     checkout_draft_id: draft.id,
   }), 'create order');
 
@@ -418,6 +420,8 @@ async function initiatePaidOrder(base44, ctx) {
     currency: 'AUD',
     payment_status: 'pending',
     order_status: 'confirmed',
+    order_source: 'online',
+    payment_method: 'stripe',
     checkout_draft_id: draft.id,
   }), 'create order');
 

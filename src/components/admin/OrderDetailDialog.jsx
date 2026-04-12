@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { base44 } from '@/api/base44Client';
 import { OrderStatusBadge, PaymentStatusBadge, TicketStatusBadge } from './OrderStatusBadge';
+import OrderSourceBadge from './OrderSourceBadge';
 import {
   Loader2, Mail, XCircle, RotateCcw, RefreshCw, Calendar, Clock,
   Monitor, MapPin, User, DollarSign, ArrowRightLeft
@@ -80,6 +81,7 @@ export default function OrderDetailDialog({ order, event, tickets, ticketTypes, 
             Order #{order.order_number}
             <OrderStatusBadge status={order.order_status} />
             <PaymentStatusBadge status={order.payment_status} />
+            <OrderSourceBadge source={order.order_source || 'online'} />
           </DialogTitle>
         </DialogHeader>
 
@@ -100,7 +102,13 @@ export default function OrderDetailDialog({ order, event, tickets, ticketTypes, 
               <DollarSign className="h-3.5 w-3.5" />
               {order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} ${order.currency || 'AUD'}` : 'Free'}
             </p>
+            {order.payment_method && order.payment_method !== 'stripe' && (
+              <p className="text-xs text-muted-foreground capitalize">{order.payment_method.replace(/_/g, ' ')}</p>
+            )}
             <p className="text-muted-foreground">Ordered {fmtDate(order.created_date)}</p>
+            {order.admin_notes && (
+              <p className="text-xs text-muted-foreground mt-1 italic">Notes: {order.admin_notes}</p>
+            )}
           </div>
         </div>
 

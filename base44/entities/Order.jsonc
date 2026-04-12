@@ -70,6 +70,39 @@
       ],
       "default": "confirmed"
     },
+    "order_source": {
+      "type": "string",
+      "title": "Order Source",
+      "enum": [
+        "online",
+        "manual",
+        "box_office",
+        "complimentary"
+      ],
+      "default": "online"
+    },
+    "payment_method": {
+      "type": "string",
+      "title": "Payment Method",
+      "enum": [
+        "stripe",
+        "card_external",
+        "cash",
+        "bank_transfer",
+        "complimentary",
+        "other"
+      ],
+      "default": "stripe"
+    },
+    "admin_notes": {
+      "type": "string",
+      "title": "Admin Notes"
+    },
+    "created_by_admin_id": {
+      "type": "string",
+      "title": "Created By Admin",
+      "relationType": "PlatformUser"
+    },
     "checkout_draft_id": {
       "type": "string",
       "title": "Checkout Draft",
