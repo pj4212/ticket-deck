@@ -41,7 +41,7 @@ export default function FeeCalculator() {
           {/* Ticket price input */}
           <div className="mb-6">
             <Label htmlFor="ticket-price" className="text-base font-medium text-foreground mb-2 block">
-              Ticket Price (USD)
+              Ticket Price (AUD)
             </Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />

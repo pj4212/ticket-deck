@@ -13,7 +13,7 @@ export default function HeroSection() {
           {/* Trust badge */}
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-8">
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm font-medium text-primary">Built for Australian event organisers</span>
+            <span className="text-sm font-medium text-primary">Cheapest Australian event ticketing platform</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-[1.1] tracking-tight">
