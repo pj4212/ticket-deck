@@ -30,6 +30,7 @@ const GlobalSettings = React.lazy(() => import('./pages/admin/GlobalSettings'));
 
 // Lazy-loaded pages
 const Home = React.lazy(() => import('./pages/Home'));
+const ComparePage = React.lazy(() => import('./pages/Compare'));
 const EventPage = React.lazy(() => import('./pages/EventPage'));
 const SeriesPage = React.lazy(() => import('./pages/SeriesPage'));
 const OrderConfirmation = React.lazy(() => import('./pages/OrderConfirmation'));
@@ -106,6 +107,7 @@ const AuthenticatedApp = () => {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
             <Route path="/events" element={<BrowseEvents />} />
+            <Route path="/compare/:competitor" element={<ComparePage />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/event/:slug" element={<EventPage />} />
             <Route path="/series/:slug" element={<SeriesPage />} />

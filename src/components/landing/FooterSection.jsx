@@ -9,6 +9,14 @@ const FOOTER_LINKS = {
     { label: 'Pricing', to: '/pricing' },
     { label: 'Browse Events', to: '/events' },
   ],
+  Compare: [
+    { label: 'Ticket Tailor Alternative', to: '/compare/ticket-tailor' },
+    { label: 'Eventbrite Alternative', to: '/compare/eventbrite' },
+    { label: 'Ticketebo Alternative', to: '/compare/ticketebo' },
+    { label: 'TryBooking Alternative', to: '/compare/trybooking' },
+    { label: 'Humanitix Alternative', to: '/compare/humanitix' },
+    { label: 'Ticketleap Alternative', to: '/compare/ticketleap' },
+  ],
   Solutions: [
     { label: 'Online Events', href: '/#features' },
     { label: 'In-Person Events', href: '/#features' },
