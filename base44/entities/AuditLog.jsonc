@@ -20,7 +20,8 @@
         "workspace_member",
         "system",
         "webhook",
-        "guest"
+        "guest",
+        "buyer"
       ]
     },
     "action_type": {
@@ -56,7 +57,13 @@
         "integration_connect",
         "integration_disconnect",
         "data_export",
-        "data_delete"
+        "data_delete",
+        "settings_change",
+        "tax_config_change",
+        "locale_change",
+        "payment_config_change",
+        "consent_granted",
+        "consent_withdrawn"
       ]
     },
     "entity_type": {

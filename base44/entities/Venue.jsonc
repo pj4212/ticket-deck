@@ -16,9 +16,33 @@
       "type": "string",
       "title": "Venue Name"
     },
+    "address_line_1": {
+      "type": "string",
+      "title": "Address Line 1"
+    },
+    "address_line_2": {
+      "type": "string",
+      "title": "Address Line 2"
+    },
+    "city": {
+      "type": "string",
+      "title": "City"
+    },
+    "state": {
+      "type": "string",
+      "title": "State / Province"
+    },
+    "postal_code": {
+      "type": "string",
+      "title": "Postal / ZIP Code"
+    },
+    "country": {
+      "type": "string",
+      "title": "Country"
+    },
     "address": {
       "type": "string",
-      "title": "Address"
+      "title": "Full Address (legacy)"
     },
     "venue_link": {
       "type": "string",

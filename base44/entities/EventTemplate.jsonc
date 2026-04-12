@@ -35,6 +35,14 @@
       ],
       "default": "public_listed"
     },
+    "default_locale": {
+      "type": "string",
+      "title": "Default Event Locale"
+    },
+    "default_currency": {
+      "type": "string",
+      "title": "Default Currency"
+    },
     "default_location_id": {
       "type": "string",
       "title": "Default Location",

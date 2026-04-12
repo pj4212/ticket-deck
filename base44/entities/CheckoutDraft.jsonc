@@ -29,6 +29,23 @@
       "type": "string",
       "title": "Buyer Phone"
     },
+    "buyer_company": {
+      "type": "string",
+      "title": "Buyer Company"
+    },
+    "buyer_tax_number": {
+      "type": "string",
+      "title": "Buyer Tax/VAT Number"
+    },
+    "buyer_country": {
+      "type": "string",
+      "title": "Buyer Country"
+    },
+    "locale": {
+      "type": "string",
+      "title": "Checkout Locale",
+      "default": "en"
+    },
     "send_all_to_buyer": {
       "type": "boolean",
       "title": "Send All Tickets to Buyer",
@@ -47,6 +64,11 @@
     "marketing_opt_in": {
       "type": "boolean",
       "title": "Marketing Opt-In",
+      "default": false
+    },
+    "privacy_consent": {
+      "type": "boolean",
+      "title": "Privacy Consent",
       "default": false
     },
     "status": {

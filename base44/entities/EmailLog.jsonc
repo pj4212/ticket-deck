@@ -30,6 +30,11 @@
       "type": "string",
       "title": "Subject"
     },
+    "locale": {
+      "type": "string",
+      "title": "Email Locale",
+      "default": "en"
+    },
     "related_entity_type": {
       "type": "string",
       "title": "Related Entity Type"

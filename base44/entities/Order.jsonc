@@ -33,19 +33,82 @@
       "type": "string",
       "title": "Buyer Phone"
     },
+    "buyer_company": {
+      "type": "string",
+      "title": "Buyer Company"
+    },
+    "buyer_tax_number": {
+      "type": "string",
+      "title": "Buyer Tax/VAT Number"
+    },
+    "buyer_country": {
+      "type": "string",
+      "title": "Buyer Country"
+    },
+    "buyer_address_json": {
+      "type": "string",
+      "title": "Buyer Address (JSON)"
+    },
+    "locale": {
+      "type": "string",
+      "title": "Order Locale",
+      "default": "en"
+    },
     "total_amount": {
       "type": "number",
       "title": "Total Amount",
       "default": 0
     },
+    "subtotal_amount": {
+      "type": "number",
+      "title": "Subtotal (before tax)",
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "number",
+      "title": "Tax Amount",
+      "default": 0
+    },
+    "tax_mode": {
+      "type": "string",
+      "title": "Tax Mode",
+      "enum": [
+        "inclusive",
+        "exclusive",
+        "none"
+      ],
+      "default": "none"
+    },
+    "tax_label": {
+      "type": "string",
+      "title": "Tax Label"
+    },
+    "tax_rate_percent": {
+      "type": "number",
+      "title": "Tax Rate (%)",
+      "default": 0
+    },
+    "discount_amount": {
+      "type": "number",
+      "title": "Discount Amount",
+      "default": 0
+    },
     "currency": {
       "type": "string",
       "title": "Currency",
-      "default": "AUD"
+      "default": "USD"
     },
-    "stripe_fee": {
+    "payment_provider": {
+      "type": "string",
+      "title": "Payment Provider"
+    },
+    "payment_provider_fee": {
       "type": "number",
-      "title": "Stripe Fee"
+      "title": "Provider Fee"
+    },
+    "net_revenue": {
+      "type": "number",
+      "title": "Net Revenue"
     },
     "payment_status": {
       "type": "string",
@@ -94,6 +157,16 @@
       ],
       "default": "stripe"
     },
+    "refund_amount": {
+      "type": "number",
+      "title": "Refund Amount",
+      "default": 0
+    },
+    "refund_tax_amount": {
+      "type": "number",
+      "title": "Refund Tax Amount",
+      "default": 0
+    },
     "admin_notes": {
       "type": "string",
       "title": "Admin Notes"
@@ -115,6 +188,10 @@
     "stripe_payment_intent_id": {
       "type": "string",
       "title": "Stripe Payment Intent ID"
+    },
+    "external_payment_ref": {
+      "type": "string",
+      "title": "External Payment Reference"
     }
   },
   "required": [

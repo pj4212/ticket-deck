@@ -22,6 +22,10 @@
       "type": "string",
       "title": "Label"
     },
+    "label_translations_json": {
+      "type": "string",
+      "title": "Label Translations (JSON)"
+    },
     "field_key": {
       "type": "string",
       "title": "Field Key"
@@ -37,7 +41,12 @@
         "radio",
         "checkbox",
         "textarea",
-        "date"
+        "date",
+        "phone",
+        "address",
+        "consent",
+        "company",
+        "tax_number"
       ]
     },
     "is_required": {
@@ -48,6 +57,14 @@
     "help_text": {
       "type": "string",
       "title": "Help Text"
+    },
+    "help_text_translations_json": {
+      "type": "string",
+      "title": "Help Text Translations (JSON)"
+    },
+    "validation_rules_json": {
+      "type": "string",
+      "title": "Validation Rules (JSON)"
     },
     "is_reportable": {
       "type": "boolean",
@@ -64,6 +81,8 @@
         "dietary",
         "accessibility",
         "membership",
+        "billing",
+        "compliance",
         "custom"
       ],
       "default": "none"

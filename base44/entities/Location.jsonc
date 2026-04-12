@@ -17,12 +17,15 @@
     },
     "state": {
       "type": "string",
-      "title": "State"
+      "title": "State / Province / Region"
     },
     "country": {
       "type": "string",
-      "title": "Country",
-      "default": "Australia"
+      "title": "Country"
+    },
+    "postal_code": {
+      "type": "string",
+      "title": "Postal / ZIP Code"
     },
     "timezone": {
       "type": "string",
@@ -37,8 +40,6 @@
   "required": [
     "workspace_id",
     "name",
-    "city",
-    "state",
     "timezone"
   ]
 }

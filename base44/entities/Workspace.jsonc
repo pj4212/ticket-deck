@@ -19,10 +19,69 @@
       "title": "Support Email",
       "format": "email"
     },
+    "reply_to_email": {
+      "type": "string",
+      "title": "Reply-To Email",
+      "format": "email"
+    },
+    "default_country": {
+      "type": "string",
+      "title": "Default Country"
+    },
+    "default_language": {
+      "type": "string",
+      "title": "Default Language",
+      "default": "en"
+    },
+    "supported_languages_json": {
+      "type": "string",
+      "title": "Supported Languages (JSON)"
+    },
+    "default_currency": {
+      "type": "string",
+      "title": "Default Currency",
+      "default": "USD"
+    },
     "default_timezone": {
       "type": "string",
-      "title": "Default Timezone",
-      "default": "Australia/Brisbane"
+      "title": "Default Timezone"
+    },
+    "default_date_format": {
+      "type": "string",
+      "title": "Default Date Format",
+      "default": "DD MMM YYYY"
+    },
+    "default_number_format": {
+      "type": "string",
+      "title": "Number Format Locale",
+      "default": "en-US"
+    },
+    "default_phone_country_code": {
+      "type": "string",
+      "title": "Default Phone Country Code"
+    },
+    "tax_mode": {
+      "type": "string",
+      "title": "Tax Mode",
+      "enum": [
+        "inclusive",
+        "exclusive",
+        "none"
+      ],
+      "default": "none"
+    },
+    "tax_label": {
+      "type": "string",
+      "title": "Tax Label"
+    },
+    "tax_rate_percent": {
+      "type": "number",
+      "title": "Default Tax Rate (%)",
+      "default": 0
+    },
+    "tax_registration_number": {
+      "type": "string",
+      "title": "Tax Registration Number"
     },
     "logo_url": {
       "type": "string",
@@ -39,6 +98,39 @@
     "sender_name": {
       "type": "string",
       "title": "Email Sender Name"
+    },
+    "sender_locale": {
+      "type": "string",
+      "title": "Email Sender Locale",
+      "default": "en"
+    },
+    "legal_privacy_url": {
+      "type": "string",
+      "title": "Privacy Policy URL"
+    },
+    "legal_terms_url": {
+      "type": "string",
+      "title": "Terms of Service URL"
+    },
+    "legal_refund_url": {
+      "type": "string",
+      "title": "Refund Policy URL"
+    },
+    "legal_footer_text": {
+      "type": "string",
+      "title": "Legal Footer Text"
+    },
+    "address_format_json": {
+      "type": "string",
+      "title": "Address Format Config (JSON)"
+    },
+    "payment_config_json": {
+      "type": "string",
+      "title": "Payment Configuration (JSON)"
+    },
+    "supported_payment_methods_json": {
+      "type": "string",
+      "title": "Supported Payment Methods (JSON)"
     },
     "public_visibility_mode_default": {
       "type": "string",

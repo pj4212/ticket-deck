@@ -29,8 +29,7 @@
     },
     "currency": {
       "type": "string",
-      "title": "Currency",
-      "default": "AUD"
+      "title": "Currency"
     },
     "usage_limit": {
       "type": "number",

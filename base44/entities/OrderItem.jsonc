@@ -22,6 +22,11 @@
       "title": "Ticket Type",
       "relationType": "TicketType"
     },
+    "time_slot_id": {
+      "type": "string",
+      "title": "Time Slot",
+      "relationType": "TimeSlot"
+    },
     "attendance_mode": {
       "type": "string",
       "title": "Attendance Mode",
@@ -47,6 +52,15 @@
       "type": "number",
       "title": "Unit Price",
       "default": 0
+    },
+    "tax_amount": {
+      "type": "number",
+      "title": "Tax Amount",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency"
     },
     "custom_field_values_json": {
       "type": "string",

@@ -2,8 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Monitor, MapPin, Ticket, AlertTriangle } from "lucide-react";
 import WaitlistForm from './WaitlistForm';
+import { formatCurrency } from '@/lib/formatters';
 
-export default function TicketSelector({ ticketTypes, selections, onSelectionsChange, eventId, workspaceId }) {
+export default function TicketSelector({ ticketTypes, selections, onSelectionsChange, eventId, workspaceId, currency, numberLocale }) {
+  const cur = currency || 'USD';
+  const loc = numberLocale || 'en-US';
   const onlineTypes = ticketTypes.filter(tt => tt.attendance_mode === 'online' && tt.is_active);
   const inPersonTypes = ticketTypes.filter(tt => tt.attendance_mode === 'in_person' && tt.is_active);
   const hasMultipleGroups = onlineTypes.length > 0 && inPersonTypes.length > 0;
@@ -61,8 +64,7 @@ export default function TicketSelector({ ticketTypes, selections, onSelectionsCh
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{tt.description}</p>
             )}
             <p className="text-base font-bold mt-1.5" style={{ color: tt.price > 0 ? undefined : 'hsl(var(--chart-2))' }}>
-              {tt.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free'}
-              {tt.price > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">{tt.currency || 'AUD'}</span>}
+              {tt.price > 0 ? formatCurrency(tt.price, cur, loc) : 'Free'}
             </p>
             {tt.per_order_limit && !soldOut && (
               <p className="text-xs text-muted-foreground mt-0.5">Max {tt.per_order_limit} per order</p>

@@ -24,6 +24,14 @@
       "type": "string",
       "title": "Phone"
     },
+    "country": {
+      "type": "string",
+      "title": "Country"
+    },
+    "locale": {
+      "type": "string",
+      "title": "Locale"
+    },
     "contact_type": {
       "type": "string",
       "title": "Contact Type",
@@ -47,6 +55,11 @@
       "type": "boolean",
       "title": "Marketing Opt-In",
       "default": false
+    },
+    "consent_captured_at": {
+      "type": "string",
+      "title": "Consent Captured At",
+      "format": "date-time"
     },
     "tags_json": {
       "type": "string",

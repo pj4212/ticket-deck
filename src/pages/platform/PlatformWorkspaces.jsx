@@ -142,7 +142,11 @@ export default function PlatformWorkspaces() {
                 <div className="border-t border-border p-4 space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                     <div><p className="text-muted-foreground text-xs">Slug</p><p className="font-medium">{ws.slug}</p></div>
+                    <div><p className="text-muted-foreground text-xs">Country</p><p className="font-medium">{ws.default_country || '—'}</p></div>
+                    <div><p className="text-muted-foreground text-xs">Currency</p><p className="font-medium">{ws.default_currency || '—'}</p></div>
+                    <div><p className="text-muted-foreground text-xs">Language</p><p className="font-medium">{ws.default_language || '—'}</p></div>
                     <div><p className="text-muted-foreground text-xs">Timezone</p><p className="font-medium">{ws.default_timezone || '—'}</p></div>
+                    <div><p className="text-muted-foreground text-xs">Tax Mode</p><p className="font-medium">{ws.tax_mode || 'none'}{ws.tax_rate_percent ? ` (${ws.tax_rate_percent}%)` : ''}</p></div>
                     <div><p className="text-muted-foreground text-xs">Support Email</p><p className="font-medium truncate">{ws.support_email || '—'}</p></div>
                     <div><p className="text-muted-foreground text-xs">Created</p><p className="font-medium">{ws.created_date ? new Date(ws.created_date).toLocaleDateString() : '—'}</p></div>
                   </div>

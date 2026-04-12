@@ -26,6 +26,7 @@ const DiscountCodes = React.lazy(() => import('./pages/admin/DiscountCodes'));
 const WaitlistManagement = React.lazy(() => import('./pages/admin/WaitlistManagement'));
 const TimeSlotManagement = React.lazy(() => import('./pages/admin/TimeSlotManagement'));
 const BoxOffice = React.lazy(() => import('./pages/admin/BoxOffice'));
+const GlobalSettings = React.lazy(() => import('./pages/admin/GlobalSettings'));
 
 // Lazy-loaded pages
 const Home = React.lazy(() => import('./pages/Home'));
@@ -143,6 +144,7 @@ const AuthenticatedApp = () => {
             <Route path="box-office" element={<BoxOffice />} />
             <Route path="settings/domains" element={<CustomDomainSettings />} />
             <Route path="settings/embed" element={<EmbedSettings />} />
+            <Route path="settings/global" element={<GlobalSettings />} />
           </Route>
           <Route path="/scanner" element={<ScannerLayout />}>
             <Route index element={<ScannerHome />} />

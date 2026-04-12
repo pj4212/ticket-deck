@@ -31,6 +31,10 @@
       "type": "string",
       "title": "Email Footer Text"
     },
+    "email_footer_translations_json": {
+      "type": "string",
+      "title": "Email Footer Translations (JSON)"
+    },
     "email_header_style_json": {
       "type": "string",
       "title": "Email Header Style (JSON)"
@@ -38,6 +42,15 @@
     "checkout_theme_json": {
       "type": "string",
       "title": "Checkout Theme (JSON)"
+    },
+    "text_direction": {
+      "type": "string",
+      "title": "Text Direction",
+      "enum": [
+        "ltr",
+        "rtl"
+      ],
+      "default": "ltr"
     }
   },
   "required": [

@@ -1,6 +1,10 @@
 import { ShoppingCart, Monitor, MapPin, Tag, Clock } from "lucide-react";
+import { formatCurrency } from '@/lib/formatters';
 
-export default function OrderSummary({ selections, ticketTypes, discount, slotLabel }) {
+export default function OrderSummary({ selections, ticketTypes, discount, slotLabel, currency, numberLocale }) {
+  const cur = currency || 'USD';
+  const loc = numberLocale || 'en-US';
+  const fmtPrice = (amt) => amt > 0 ? formatCurrency(amt, cur, loc) : 'Free';
   const items = [];
   let subtotal = 0;
   let ticketCount = 0;
@@ -19,7 +23,7 @@ export default function OrderSummary({ selections, ticketTypes, discount, slotLa
       qty,
       price: tt.price,
       subtotal: lineTotal,
-      currency: tt.currency || 'AUD',
+      currency: tt.currency || 'USD',
     });
   }
 
@@ -67,7 +71,7 @@ export default function OrderSummary({ selections, ticketTypes, discount, slotLa
                 </span>
               </div>
               <span className="font-semibold shrink-0 ml-3">
-                {item.price > 0 ? `$${item.subtotal.toFixed(2)}` : 'Free'}
+                {fmtPrice(item.subtotal)}
               </span>
             </div>
           );
@@ -80,7 +84,7 @@ export default function OrderSummary({ selections, ticketTypes, discount, slotLa
             <Tag className="h-3.5 w-3.5" />
             <span>Discount ({discount.code})</span>
           </div>
-          <span className="text-emerald-400 font-medium">-${discountAmount.toFixed(2)}</span>
+          <span className="text-emerald-400 font-medium">-{formatCurrency(discountAmount, cur, loc)}</span>
         </div>
       )}
 
@@ -94,8 +98,7 @@ export default function OrderSummary({ selections, ticketTypes, discount, slotLa
       <div className="px-4 py-3 border-t border-border flex justify-between items-center">
         <span className="font-bold text-foreground">Total</span>
         <span className="font-bold text-lg text-foreground">
-          {total > 0 ? `$${total.toFixed(2)}` : 'Free'}
-          {total > 0 && <span className="text-xs font-normal text-muted-foreground ml-1">{items[0]?.currency}</span>}
+          {fmtPrice(total)}
         </span>
       </div>
     </div>

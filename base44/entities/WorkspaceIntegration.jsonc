@@ -12,10 +12,27 @@
       "title": "Provider",
       "enum": [
         "stripe",
+        "stripe_connect",
+        "paypal",
+        "square",
+        "adyen",
         "zoom",
         "resend",
-        "custom_domain"
+        "custom_domain",
+        "other"
       ]
+    },
+    "provider_region": {
+      "type": "string",
+      "title": "Provider Region"
+    },
+    "supported_currencies_json": {
+      "type": "string",
+      "title": "Supported Currencies (JSON)"
+    },
+    "supported_methods_json": {
+      "type": "string",
+      "title": "Supported Payment Methods (JSON)"
     },
     "status": {
       "type": "string",
@@ -35,7 +52,8 @@
       "enum": [
         "api_key",
         "oauth",
-        "webhook_only"
+        "webhook_only",
+        "connected_account"
       ],
       "default": "api_key"
     },
@@ -46,6 +64,10 @@
     "external_account_id": {
       "type": "string",
       "title": "External Account ID"
+    },
+    "config_json": {
+      "type": "string",
+      "title": "Provider Config (JSON)"
     },
     "last_checked_at": {
       "type": "string",

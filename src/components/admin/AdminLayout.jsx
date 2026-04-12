@@ -29,6 +29,7 @@ const NAV_ITEMS = [
   { path: '/admin/settings/integrations', label: 'Integrations', icon: Plug, roles: ['super_admin'] },
   { path: '/admin/settings/custom-fields', label: 'Custom Fields', icon: FileText, roles: ['super_admin'] },
   { path: '/admin/settings/webhooks', label: 'Webhooks', icon: Webhook, roles: ['super_admin'] },
+  { path: '/admin/settings/global', label: 'Global Settings', icon: Globe, roles: ['super_admin'] },
   { path: '/admin/settings/users', label: 'Users', icon: Users, roles: ['super_admin'] },
   { path: '/admin/settings/email-testing', label: 'Email Testing', icon: Mail, roles: ['admin'] },
   { path: '/admin/settings/load-test', label: 'Load Testing', icon: Zap, roles: ['admin'] },

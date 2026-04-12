@@ -30,8 +30,11 @@
     },
     "currency": {
       "type": "string",
-      "title": "Currency",
-      "default": "AUD"
+      "title": "Currency"
+    },
+    "tax_inclusive": {
+      "type": "boolean",
+      "title": "Price Includes Tax"
     },
     "requires_payment": {
       "type": "boolean",

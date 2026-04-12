@@ -29,6 +29,33 @@
       "type": "string",
       "title": "Description"
     },
+    "locale": {
+      "type": "string",
+      "title": "Event Locale"
+    },
+    "currency": {
+      "type": "string",
+      "title": "Event Currency Override"
+    },
+    "tax_mode_override": {
+      "type": "string",
+      "title": "Tax Mode Override",
+      "enum": [
+        "inherit",
+        "inclusive",
+        "exclusive",
+        "none"
+      ],
+      "default": "inherit"
+    },
+    "tax_rate_override": {
+      "type": "number",
+      "title": "Tax Rate Override (%)"
+    },
+    "tax_label_override": {
+      "type": "string",
+      "title": "Tax Label Override"
+    },
     "visibility_mode": {
       "type": "string",
       "title": "Visibility Mode",
@@ -52,6 +79,23 @@
         "in_person",
         "hybrid"
       ]
+    },
+    "scheduling_mode": {
+      "type": "string",
+      "title": "Scheduling Mode",
+      "enum": [
+        "standard",
+        "timed_entry"
+      ],
+      "default": "standard"
+    },
+    "slot_interval_mins": {
+      "type": "number",
+      "title": "Slot Interval (mins)"
+    },
+    "slot_default_capacity": {
+      "type": "number",
+      "title": "Default Slot Capacity"
     },
     "event_date": {
       "type": "string",
@@ -160,6 +204,14 @@
       "type": "number",
       "title": "Reminder Hours Before Event",
       "default": 24
+    },
+    "seo_title": {
+      "type": "string",
+      "title": "SEO Title"
+    },
+    "seo_description": {
+      "type": "string",
+      "title": "SEO Description"
     },
     "status": {
       "type": "string",
