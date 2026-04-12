@@ -151,6 +151,16 @@
       "type": "string",
       "title": "Marketing Opt-In Label"
     },
+    "reminder_enabled": {
+      "type": "boolean",
+      "title": "Reminder Emails Enabled",
+      "default": true
+    },
+    "reminder_hours_before": {
+      "type": "number",
+      "title": "Reminder Hours Before Event",
+      "default": 24
+    },
     "status": {
       "type": "string",
       "title": "Status",

@@ -2,7 +2,9 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, Trash2, Rocket, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, Trash2, Rocket, CheckCircle2, Bell } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState } from 'react';
 
@@ -39,6 +41,34 @@ export default function EventFormStepPublish({
         </Select>
       </div>
 
+      {/* Reminder settings */}
+      <div className="border rounded-xl p-4 bg-muted/30 space-y-3">
+        <div className="flex items-center gap-2">
+          <Bell className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Email Reminders</h3>
+        </div>
+        <div className="flex items-center gap-3">
+          <Switch
+            checked={form.reminder_enabled !== false}
+            onCheckedChange={v => updateForm('reminder_enabled', v)}
+          />
+          <Label className="text-sm">Send automatic reminder emails before event</Label>
+        </div>
+        {form.reminder_enabled !== false && (
+          <div className="flex items-center gap-2 pl-1">
+            <Label className="text-xs text-muted-foreground">Send reminder</Label>
+            <Input
+              type="number" min="1" max="72"
+              value={form.reminder_hours_before || 24}
+              onChange={e => updateForm('reminder_hours_before', Number(e.target.value))}
+              className="w-20 h-8 text-sm"
+            />
+            <Label className="text-xs text-muted-foreground">hours before event</Label>
+          </div>
+        )}
+        <p className="text-xs text-muted-foreground">A 1-hour reminder is always sent in addition to the primary reminder.</p>
+      </div>
+
       {/* Summary */}
       <div className="border rounded-xl p-4 bg-muted/30 space-y-2">
         <h3 className="text-sm font-semibold mb-3">Pre-Publish Summary</h3>
@@ -47,6 +77,7 @@ export default function EventFormStepPublish({
         <SummaryRow label="Times" value={form.start_datetime && form.end_datetime ? '✓ Set' : ''} ok={!!form.start_datetime && !!form.end_datetime} />
         <SummaryRow label="Mode" value={form.event_mode?.replace('_', ' ')} ok={!!form.event_mode} />
         <SummaryRow label="Slug" value={form.slug} ok={!!form.slug} />
+        <SummaryRow label="Reminders" value={form.reminder_enabled !== false ? `${form.reminder_hours_before || 24}h + 1h` : 'Disabled'} ok={true} />
       </div>
 
       {/* Actions */}

@@ -44,6 +44,7 @@ export default function EventForm() {
     zoom_mode: 'none', zoom_link: '', zoom_meeting_id: '', zoom_webinar_id: '',
     sales_open_at: '', sales_close_at: '',
     waiver_text: '', terms_text: '', show_marketing_opt_in: false, marketing_opt_in_label: '',
+    reminder_enabled: true, reminder_hours_before: 24,
     status: 'draft',
   });
   const [ticketTypes, setTicketTypes] = useState([]);
@@ -96,6 +97,8 @@ export default function EventForm() {
               waiver_text: ev.waiver_text || '', terms_text: ev.terms_text || '',
               show_marketing_opt_in: ev.show_marketing_opt_in || false,
               marketing_opt_in_label: ev.marketing_opt_in_label || '',
+              reminder_enabled: ev.reminder_enabled !== false,
+              reminder_hours_before: ev.reminder_hours_before || 24,
               status: ev.status || 'draft',
             });
             setTicketTypes(tts.map(tt => ({ ...tt, _existing: true })));
@@ -118,6 +121,8 @@ export default function EventForm() {
               waiver_text: ev.waiver_text || '', terms_text: ev.terms_text || '',
               show_marketing_opt_in: ev.show_marketing_opt_in || false,
               marketing_opt_in_label: ev.marketing_opt_in_label || '',
+              reminder_enabled: ev.reminder_enabled !== false,
+              reminder_hours_before: ev.reminder_hours_before || 24,
               status: 'draft',
             });
             setTicketTypes(tts.map(tt => ({

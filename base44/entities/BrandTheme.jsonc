@@ -27,6 +27,10 @@
       "type": "string",
       "title": "Font Family"
     },
+    "email_footer_text": {
+      "type": "string",
+      "title": "Email Footer Text"
+    },
     "email_header_style_json": {
       "type": "string",
       "title": "Email Header Style (JSON)"
