@@ -1,11 +1,11 @@
-import { Check, X, Minus } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 
 const COMPETITORS = [
   {
     name: 'Ticket Deck (Starter)',
     subscription: 'None',
     perTicket: 'FREE',
-    stripeFee: '$1.18',
+    processingFee: '~1.75% + $0.30',
     total50: '$1.18',
     pctOf50: '2.35%',
     best: true,
@@ -14,7 +14,7 @@ const COMPETITORS = [
     name: 'Ticket Deck (Pro)',
     subscription: 'None',
     perTicket: '0.9%',
-    stripeFee: '$1.18',
+    processingFee: '~1.75% + $0.30',
     total50: '$1.63',
     pctOf50: '3.25%',
     best: false,
@@ -23,7 +23,7 @@ const COMPETITORS = [
     name: 'Ticket Tailor',
     subscription: '$19–$99/mo',
     perTicket: '$0.65 flat',
-    stripeFee: '$1.18',
+    processingFee: 'Stripe fees',
     total50: '$1.83 + sub',
     pctOf50: '3.65%+',
     best: false,
@@ -32,7 +32,7 @@ const COMPETITORS = [
     name: 'Eventbrite',
     subscription: 'None',
     perTicket: '3.5% + $1.59',
-    stripeFee: 'Included',
+    processingFee: 'Included',
     total50: '$4.58',
     pctOf50: '9.15%',
     best: false,
@@ -41,18 +41,9 @@ const COMPETITORS = [
     name: 'Humanitix',
     subscription: 'None',
     perTicket: '5% (to charity)',
-    stripeFee: '$1.18',
+    processingFee: 'Stripe fees',
     total50: '$3.68',
     pctOf50: '7.35%',
-    best: false,
-  },
-  {
-    name: 'TicketLeap',
-    subscription: 'None',
-    perTicket: '$1.00 + 5%',
-    stripeFee: '$1.18',
-    total50: '$4.68',
-    pctOf50: '9.35%',
     best: false,
   },
 ];
@@ -61,55 +52,59 @@ const FEATURE_COMP = [
   { feature: 'No monthly subscription', td: true, tt: false, eb: true, hu: true },
   { feature: 'Free tier (≤50 tickets)', td: true, tt: false, eb: false, hu: false },
   { feature: 'Free events at $0', td: true, tt: true, eb: true, hu: true },
-  { feature: 'Custom branding', td: true, tt: true, eb: false, hu: false },
+  { feature: 'Multi-currency support', td: true, tt: true, eb: true, hu: false },
+  { feature: 'Custom branding & domain', td: true, tt: true, eb: false, hu: false },
   { feature: 'QR check-in scanner', td: true, tt: true, eb: true, hu: true },
   { feature: 'Zoom integration', td: true, tt: false, eb: false, hu: false },
+  { feature: 'Multi-language support', td: true, tt: false, eb: false, hu: false },
+  { feature: 'Tax configuration (GST/VAT)', td: true, tt: false, eb: false, hu: false },
   { feature: 'Webhooks & API', td: true, tt: true, eb: true, hu: false },
   { feature: 'Team roles & permissions', td: true, tt: true, eb: true, hu: true },
+  { feature: 'Recurring events', td: true, tt: true, eb: true, hu: true },
 ];
 
 function BoolIcon({ val }) {
-  if (val === true) return <Check className="h-4 w-4 text-green-500" />;
-  if (val === false) return <X className="h-4 w-4 text-red-400" />;
-  return <Minus className="h-4 w-4 text-muted-foreground" />;
+  if (val === true) return <Check className="h-4 w-4 text-emerald-400" />;
+  return <X className="h-4 w-4 text-red-400/60" />;
 }
 
 export default function ComparisonSection() {
   return (
-    <section className="py-20 px-4 bg-card/50">
+    <section className="py-20 px-4 bg-card/30">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
+          <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Comparison</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Ticket Deck vs Eventbrite vs Ticket Tailor vs Humanitix
+            How Ticket Deck compares
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            See how ticketing fees compare across Australia's most popular event platforms on a $50 ticket.
+            See how fees and features stack up against the most popular ticketing platforms (based on a $50 ticket).
           </p>
         </div>
 
         {/* Price comparison table */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="bg-card">
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">Platform</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">Subscription</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">Platform fee</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Stripe fee</th>
-                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Total / $50 ticket</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Processing</th>
+                <th className="text-left py-3 px-4 text-muted-foreground font-medium">Total / $50</th>
                 <th className="text-left py-3 px-4 text-muted-foreground font-medium">% of ticket</th>
               </tr>
             </thead>
             <tbody>
-              {COMPETITORS.map(c => (
-                <tr key={c.name} className={`border-b border-border ${c.best ? 'bg-primary/5' : ''}`}>
+              {COMPETITORS.map((c) => (
+                <tr key={c.name} className={`border-t border-border ${c.best ? 'bg-primary/5' : ''}`}>
                   <td className={`py-3 px-4 font-medium ${c.best ? 'text-primary' : 'text-foreground'}`}>
                     {c.name}
-                    {c.best && <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Cheapest</span>}
+                    {c.best && <span className="ml-2 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">Lowest</span>}
                   </td>
                   <td className="py-3 px-4 text-muted-foreground">{c.subscription}</td>
                   <td className="py-3 px-4 text-muted-foreground">{c.perTicket}</td>
-                  <td className="py-3 px-4 text-muted-foreground">{c.stripeFee}</td>
+                  <td className="py-3 px-4 text-muted-foreground">{c.processingFee}</td>
                   <td className={`py-3 px-4 font-medium ${c.best ? 'text-primary' : 'text-foreground'}`}>{c.total50}</td>
                   <td className="py-3 px-4 text-muted-foreground">{c.pctOf50}</td>
                 </tr>
@@ -118,13 +113,17 @@ export default function ComparisonSection() {
           </table>
         </div>
 
+        <p className="text-xs text-muted-foreground text-center mt-3">
+          Fees shown are approximate and based on standard Stripe rates. Actual processing fees vary by country and payment method.
+        </p>
+
         {/* Feature comparison */}
         <div className="mt-16">
           <h3 className="text-xl font-semibold text-foreground text-center mb-8">Feature comparison</h3>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="bg-card">
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Feature</th>
                   <th className="text-center py-3 px-4 text-primary font-semibold">Ticket Deck</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Ticket Tailor</th>
@@ -133,8 +132,8 @@ export default function ComparisonSection() {
                 </tr>
               </thead>
               <tbody>
-                {FEATURE_COMP.map(row => (
-                  <tr key={row.feature} className="border-b border-border">
+                {FEATURE_COMP.map((row) => (
+                  <tr key={row.feature} className="border-t border-border">
                     <td className="py-3 px-4 text-foreground">{row.feature}</td>
                     <td className="py-3 px-4"><div className="flex justify-center"><BoolIcon val={row.td} /></div></td>
                     <td className="py-3 px-4"><div className="flex justify-center"><BoolIcon val={row.tt} /></div></td>

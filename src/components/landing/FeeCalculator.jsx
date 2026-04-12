@@ -40,7 +40,7 @@ export default function FeeCalculator() {
         {/* Header */}
         <div className="bg-primary/10 border-b border-border px-6 py-5 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-            Calculate your Ticket Deck fees
+            Calculate your fees
           </h2>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Enter your ticket price to see exactly what you'll pay — no hidden costs
@@ -51,7 +51,7 @@ export default function FeeCalculator() {
           {/* Ticket price input */}
           <div className="mb-6">
             <Label htmlFor="ticket-price" className="text-base font-medium text-foreground mb-2 block">
-              Ticket Price
+              Ticket Price (USD)
             </Label>
             <div className="relative">
               <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -132,7 +132,7 @@ export default function FeeCalculator() {
               {/* Fee breakdown */}
               <div className="bg-secondary/30 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Stripe processing fee</span>
+                  <span className="text-muted-foreground">Payment processing fee</span>
                   <span className="text-foreground font-medium">${stripeFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -181,7 +181,7 @@ export default function FeeCalculator() {
 
       {/* Footnotes */}
       <div className="mt-4 space-y-1 text-xs text-muted-foreground text-center">
-        <p>Stripe fees (1.75% + $0.30) apply to all paid tickets regardless of tier. All amounts in AUD.</p>
+        <p>Payment processing fees (e.g. Stripe 1.75% + $0.30) apply to all paid tickets. Actual rates vary by country.</p>
         <p>Free events are always free — no fees whatsoever.</p>
       </div>
 

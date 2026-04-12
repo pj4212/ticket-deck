@@ -2,12 +2,14 @@ import { Ticket, ArrowRight, DollarSign, CreditCard, ShieldCheck, Zap } from 'lu
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import FeeCalculator from '@/components/landing/FeeCalculator';
+import ComparisonSection from '@/components/landing/ComparisonSection';
+import FooterSection from '@/components/landing/FooterSection';
 
 const PERKS = [
   {
     icon: DollarSign,
     title: 'Free for small events',
-    desc: 'Sell up to 50 tickets a month with zero platform fees. You only pay Stripe processing.',
+    desc: 'Sell up to 50 tickets a month with zero platform fees. You only pay payment processing.',
   },
   {
     icon: CreditCard,
@@ -51,7 +53,7 @@ export default function Pricing() {
           </h1>
 
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Australia's cheapest alternative to Eventbrite &amp; Ticket Tailor. No subscriptions, no flat per-ticket fees, no hidden costs. 
+            No subscriptions, no flat per-ticket fees, no hidden costs. 
             Free for up to 50 tickets/month, then from just 0.6%. Pass fees to buyers or absorb them — your choice.
           </p>
         </div>
@@ -100,7 +102,7 @@ export default function Pricing() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            Stripe processing fees (1.75% + $0.30) are included in all totals above. All amounts in AUD.
+            Payment processing fees (e.g. Stripe 1.75% + $0.30) are included in all totals above. Actual rates vary by country and provider.
           </p>
         </div>
       </section>
@@ -122,6 +124,9 @@ export default function Pricing() {
         </div>
       </section>
 
+      {/* Competitor comparison */}
+      <ComparisonSection />
+
       {/* CTA */}
       <section className="py-16 px-4 text-center">
         <div className="max-w-2xl mx-auto">
@@ -129,13 +134,15 @@ export default function Pricing() {
             Ready to stop overpaying for ticketing?
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Join organisers across Australia who keep more of their ticket revenue.
+            Join organisers worldwide who keep more of their ticket revenue.
           </p>
           <Button size="lg" className="mt-6 gap-2 text-base px-8" onClick={() => window.location.href = '/admin'}>
             Start selling tickets <ArrowRight className="h-4 w-4" />
           </Button>
         </div>
       </section>
+
+      <FooterSection />
     </div>
   );
 }
