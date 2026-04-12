@@ -1,35 +1,30 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, Clock, MapPin, Monitor, ArrowRight } from 'lucide-react';
+import { Loader2, Calendar, Clock, ArrowRight, Building2 } from 'lucide-react';
 
-export default function SeriesPage() {
+export default function WorkspaceProfile() {
   const { slug } = useParams();
-  const [series, setSeries] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = series ? `${series.name} — Session Pass` : 'Session Pass';
-    return () => { document.title = 'Session Pass'; };
-  }, [series]);
-
-  useEffect(() => {
     async function load() {
-      const allSeries = await base44.entities.EventSeries.filter({ slug });
-      if (!allSeries.length) { setError('Series not found'); setLoading(false); return; }
-      const s = allSeries[0];
-      setSeries(s);
+      const workspaces = await base44.entities.Workspace.filter({ slug, is_active: true });
+      if (!workspaces.length) { setError('Organisation not found'); setLoading(false); return; }
+      const ws = workspaces[0];
+      setWorkspace(ws);
 
-      const allEvents = await base44.entities.Event.filter({ series_id: s.id, status: 'published' });
+      const allEvents = await base44.entities.Event.filter({
+        workspace_id: ws.id,
+        status: 'published',
+        visibility_mode: 'public_listed',
+      });
       const now = new Date().toISOString().slice(0, 10);
-      const upcoming = allEvents
-        .filter(e => e.event_date >= now && (e.visibility_mode === 'public_listed' || e.visibility_mode === 'unlisted'))
-        .sort((a, b) => a.event_date.localeCompare(b.event_date));
-      setEvents(upcoming);
+      setEvents(allEvents.filter(e => e.event_date >= now).sort((a, b) => a.event_date.localeCompare(b.event_date)));
       setLoading(false);
     }
     load();
@@ -43,16 +38,25 @@ export default function SeriesPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Workspace header */}
       <div className="mb-8 text-center">
-        <h1 className="text-3xl sm:text-4xl font-bold mb-3">{series.name}</h1>
-        {series.description && <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{series.description}</p>}
+        {workspace.logo_url ? (
+          <img src={workspace.logo_url} alt={workspace.name} className="h-16 w-auto mx-auto mb-4 rounded-lg" />
+        ) : (
+          <div className="h-16 w-16 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <Building2 className="h-8 w-8 text-primary" />
+          </div>
+        )}
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{workspace.name}</h1>
+        {workspace.description && <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{workspace.description}</p>}
       </div>
 
+      {/* Events */}
       {events.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">No upcoming sessions at this time.</p>
+        <p className="text-center text-muted-foreground py-12">No upcoming events.</p>
       ) : (
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold mb-4">Upcoming Sessions</h2>
+          <h2 className="text-xl font-semibold mb-4">Upcoming Events</h2>
           {events.map(event => {
             const modeLabel = event.event_mode === 'online_stream' ? 'Online' : event.event_mode === 'hybrid' ? 'Hybrid' : 'In-Person';
             return (
@@ -63,12 +67,12 @@ export default function SeriesPage() {
                   <span className="text-2xl font-bold text-primary leading-tight">{new Date(event.event_date+'T00:00:00').getDate()}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="flex items-center gap-2 mb-1">
                     <span className="font-semibold group-hover:text-primary transition-colors truncate">{event.name}</span>
                     <Badge variant="outline" className="text-xs">{modeLabel}</Badge>
                   </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1 sm:hidden"><Calendar className="h-3.5 w-3.5" />{fmtDate(event.event_date)}</span>
+                  <div className="flex flex-wrap gap-x-3 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{fmtDate(event.event_date)}</span>
                     <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{fmtTime(event.start_datetime)} – {fmtTime(event.end_datetime)}</span>
                   </div>
                 </div>

@@ -6,9 +6,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-// Page transitions are handled inside each layout (PublicLayout, AdminLayout, ScannerLayout)
 
-// Eager imports for frequently-used admin pages (avoids slow first-load)
+// Eager imports
 import Dashboard from './pages/admin/Dashboard';
 import EventList from './pages/admin/EventList';
 import Reports from './pages/admin/Reports';
@@ -17,9 +16,14 @@ import MentorManagement from './pages/admin/MentorManagement';
 import SeriesManagement from './pages/admin/SeriesManagement';
 import PastSessions from './pages/admin/PastSessions';
 
-// Lazy-loaded pages (less frequently accessed)
+// Lazy-loaded pages
+const Home = React.lazy(() => import('./pages/Home'));
 const EventPage = React.lazy(() => import('./pages/EventPage'));
+const SeriesPage = React.lazy(() => import('./pages/SeriesPage'));
 const OrderConfirmation = React.lazy(() => import('./pages/OrderConfirmation'));
+const ManageOrder = React.lazy(() => import('./pages/ManageOrder'));
+const MyTickets = React.lazy(() => import('./pages/MyTickets'));
+const WorkspaceProfile = React.lazy(() => import('./pages/WorkspaceProfile'));
 const PublicLayout = React.lazy(() => import('./components/PublicLayout'));
 const AdminLayout = React.lazy(() => import('./components/admin/AdminLayout'));
 const ScannerLayout = React.lazy(() => import('./components/scanner/ScannerLayout'));
@@ -30,8 +34,6 @@ const ManualCheckinList = React.lazy(() => import('./pages/scanner/ManualCheckin
 const EventForm = React.lazy(() => import('./pages/admin/EventForm'));
 const AttendeeList = React.lazy(() => import('./pages/admin/AttendeeList'));
 const UserManagement = React.lazy(() => import('./pages/admin/UserManagement'));
-const SeriesPage = React.lazy(() => import('./pages/SeriesPage'));
-const Home = React.lazy(() => import('./pages/Home'));
 const EmailTesting = React.lazy(() => import('./pages/admin/EmailTesting'));
 const LoadTest = React.lazy(() => import('./pages/admin/LoadTest'));
 const RateLimitLogs = React.lazy(() => import('./pages/admin/RateLimitLogs'));
@@ -77,6 +79,9 @@ const AuthenticatedApp = () => {
             <Route path="/event/:slug" element={<EventPage />} />
             <Route path="/series/:slug" element={<SeriesPage />} />
             <Route path="/order/:orderNumber" element={<OrderConfirmation />} />
+            <Route path="/manage/:orderNumber" element={<ManageOrder />} />
+            <Route path="/my-tickets" element={<MyTickets />} />
+            <Route path="/org/:slug" element={<WorkspaceProfile />} />
             <Route path="/account" element={<AccountSettings />} />
           </Route>
           <Route path="/admin" element={<AdminLayout />}>
