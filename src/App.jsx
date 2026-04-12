@@ -11,7 +11,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/admin/Dashboard';
 import EventList from './pages/admin/EventList';
 import Reports from './pages/admin/Reports';
-import PlatinumLeaderManagement from './pages/admin/PlatinumLeaderManagement';
+
 import MentorManagement from './pages/admin/MentorManagement';
 import SeriesManagement from './pages/admin/SeriesManagement';
 import PastSessions from './pages/admin/PastSessions';
@@ -113,7 +113,7 @@ const AuthenticatedApp = () => {
             <Route path="past-sessions" element={<PastSessions />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings/mentors" element={<MentorManagement />} />
-            <Route path="settings/platinum-leaders" element={<PlatinumLeaderManagement />} />
+
             <Route path="settings/users" element={<UserManagement />} />
             <Route path="settings/email-testing" element={<EmailTesting />} />
             <Route path="settings/load-test" element={<LoadTest />} />
