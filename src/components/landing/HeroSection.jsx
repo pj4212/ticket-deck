@@ -1,5 +1,6 @@
 import { ArrowRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
 
 export default function HeroSection() {
   return (
@@ -30,7 +31,7 @@ export default function HeroSection() {
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="gap-2 text-base px-8 h-12 shadow-lg shadow-primary/25" onClick={() => window.location.href = '/admin'}>
+            <Button size="lg" className="gap-2 text-base px-8 h-12 shadow-lg shadow-primary/25" onClick={() => base44.auth.redirectToLogin('/admin')}>
               Get Started Free <ArrowRight className="h-4 w-4" />
             </Button>
             <Button

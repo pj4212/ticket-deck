@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { ArrowRight, Check, X, Ticket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
 
 const COMPETITORS_DATA = {
   'ticket-tailor': {
@@ -90,10 +91,8 @@ export default function ComparePage() {
             {data.description}
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Button size="lg" className="gap-2 px-8 h-12" asChild>
-              <Link to="/admin">
-                Start for free <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button size="lg" className="gap-2 px-8 h-12" onClick={() => base44.auth.redirectToLogin('/admin')}>
+              Start for free <ArrowRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -157,7 +157,7 @@ export default function PublicLayout() {
                 <Button variant="ghost" size="sm" onClick={() => base44.auth.redirectToLogin()}>
                   Organiser Login
                 </Button>
-                <Button size="sm" className="gap-1.5" onClick={() => window.location.href = '/admin'}>
+                <Button size="sm" className="gap-1.5" onClick={() => base44.auth.redirectToLogin('/admin')}>
                   Get Started Free
                 </Button>
               </>
@@ -223,7 +223,7 @@ export default function PublicLayout() {
                   <Button variant="outline" size="sm" className="w-full" onClick={() => base44.auth.redirectToLogin()}>
                     Organiser Login
                   </Button>
-                  <Button size="sm" className="w-full" onClick={() => window.location.href = '/admin'}>
+                  <Button size="sm" className="w-full" onClick={() => base44.auth.redirectToLogin('/admin')}>
                     Get Started Free
                   </Button>
                 </>

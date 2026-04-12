@@ -1,6 +1,7 @@
 import { Ticket, ArrowRight, Check, DollarSign, CreditCard, ShieldCheck, Zap, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import FeeCalculator from '@/components/landing/FeeCalculator';
+import { base44 } from '@/api/base44Client';
 import ComparisonSection from '@/components/landing/ComparisonSection';
 import FooterSection from '@/components/landing/FooterSection';
 
@@ -139,7 +140,7 @@ export default function Pricing() {
                   if (plan.name === 'Enterprise') {
                     window.location.href = 'mailto:hello@ticketdeck.io?subject=Enterprise%20Inquiry';
                   } else {
-                    window.location.href = '/admin';
+                    base44.auth.redirectToLogin('/admin');
                   }
                 }}
               >
@@ -184,7 +185,7 @@ export default function Pricing() {
           <p className="mt-3 text-muted-foreground">
             Join Australian organisers who keep more of their ticket revenue.
           </p>
-          <Button size="lg" className="mt-6 gap-2 text-base px-8" onClick={() => window.location.href = '/admin'}>
+          <Button size="lg" className="mt-6 gap-2 text-base px-8" onClick={() => base44.auth.redirectToLogin('/admin')}>
             Start selling tickets <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

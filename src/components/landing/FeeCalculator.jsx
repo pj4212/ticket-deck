@@ -3,6 +3,7 @@ import { DollarSign, ArrowRight, Users, Building2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { base44 } from '@/api/base44Client';
 
 function calcFees(ticketPrice) {
   if (ticketPrice <= 0) return { stripeFee: 0, platformFee: 0, totalFee: 0 };
@@ -145,7 +146,7 @@ export default function FeeCalculator() {
 
       {/* CTA */}
       <div className="mt-8 text-center">
-        <Button size="lg" className="gap-2 text-base px-8" onClick={() => window.location.href = '/admin'}>
+        <Button size="lg" className="gap-2 text-base px-8" onClick={() => base44.auth.redirectToLogin('/admin')}>
           Get started free <ArrowRight className="h-4 w-4" />
         </Button>
         <p className="text-xs text-muted-foreground mt-2">No credit card required. No subscriptions.</p>
