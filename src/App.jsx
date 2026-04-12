@@ -15,6 +15,7 @@ import Reports from './pages/admin/Reports';
 import MentorManagement from './pages/admin/MentorManagement';
 import SeriesManagement from './pages/admin/SeriesManagement';
 import PastSessions from './pages/admin/PastSessions';
+import TemplateManager from './pages/admin/TemplateManager';
 
 // Lazy-loaded pages
 const Home = React.lazy(() => import('./pages/Home'));
@@ -107,6 +108,7 @@ const AuthenticatedApp = () => {
             <Route index element={<Dashboard />} />
             <Route path="series" element={<SeriesManagement />} />
             <Route path="events" element={<EventList />} />
+            <Route path="templates" element={<TemplateManager />} />
             <Route path="events/new" element={<EventForm />} />
             <Route path="events/:id/edit" element={<EventForm />} />
             <Route path="events/:id/attendees" element={<AttendeeList />} />

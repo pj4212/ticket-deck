@@ -13,8 +13,9 @@ import {
 const NAV_ITEMS = [
   { path: '/admin', label: 'Dashboard', icon: LayoutDashboard, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/series', label: 'Event Series', icon: FolderOpen, roles: ['super_admin', 'event_admin'] },
-  { path: '/admin/events', label: 'Sessions', icon: Calendar, roles: ['super_admin', 'event_admin'] },
-  { path: '/admin/past-sessions', label: 'Past Sessions', icon: History, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/events', label: 'Events', icon: Calendar, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/templates', label: 'Templates', icon: FileText, roles: ['super_admin', 'event_admin'] },
+  { path: '/admin/past-sessions', label: 'Past Events', icon: History, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/reports', label: 'Reports', icon: BarChart3, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/settings/emails', label: 'Email Log', icon: Mail, roles: ['super_admin', 'event_admin'] },
   { path: '/admin/settings/integrations', label: 'Integrations', icon: Plug, roles: ['super_admin'] },

@@ -6,10 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function CustomFieldInput({ field, value, onChange, error }) {
   const required = field._required;
   const label = field.label;
-  const id = `cf-${field.field_key}`;
+  const fieldId = `cf-${field.field_key}`;
 
   const labelEl = (
-    <Label htmlFor={id} className="text-sm">
+    <Label htmlFor={fieldId} className="text-sm">
       {label} {required && <span className="text-destructive">*</span>}
     </Label>
   );
@@ -27,7 +27,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Select value={value || ''} onValueChange={onChange}>
-            <SelectTrigger id={id} className={error ? 'border-destructive' : ''}>
+            <SelectTrigger id={fieldId} className={error ? 'border-destructive' : ''}>
               <SelectValue placeholder={`Select ${field.label}...`} />
             </SelectTrigger>
             <SelectContent>
@@ -50,7 +50,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
               <label key={opt.id || opt.value} className="flex items-center gap-1.5 cursor-pointer text-sm">
                 <input
                   type="radio"
-                  name={id}
+                  name={fieldId}
                   checked={value === opt.value}
                   onChange={() => onChange(opt.value)}
                   className="accent-primary h-4 w-4"
@@ -89,7 +89,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Textarea
-            id={id}
+            id={fieldId}
             value={value || ''}
             onChange={e => onChange(e.target.value)}
             rows={3}
@@ -106,7 +106,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Input
-            id={id}
+            id={fieldId}
             type="date"
             value={value || ''}
             onChange={e => onChange(e.target.value)}
@@ -122,7 +122,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Input
-            id={id}
+            id={fieldId}
             type="number"
             value={value || ''}
             onChange={e => onChange(e.target.value)}
@@ -139,7 +139,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Input
-            id={id}
+            id={fieldId}
             type="email"
             value={value || ''}
             onChange={e => onChange(e.target.value)}
@@ -156,7 +156,7 @@ export default function CustomFieldInput({ field, value, onChange, error }) {
         <div>
           {labelEl}
           <Input
-            id={id}
+            id={fieldId}
             type="text"
             value={value || ''}
             onChange={e => onChange(e.target.value)}

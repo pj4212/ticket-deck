@@ -51,7 +51,12 @@
     },
     "default_duration_mins": {
       "type": "number",
-      "title": "Default Duration (mins)"
+      "title": "Default Duration (mins)",
+      "default": 120
+    },
+    "default_timezone": {
+      "type": "string",
+      "title": "Default Timezone"
     },
     "recurrence_pattern": {
       "type": "string",
@@ -68,9 +73,31 @@
       "type": "string",
       "title": "Default Ticket Types (JSON)"
     },
-    "default_form_config_json": {
+    "default_checkout_field_ids_json": {
       "type": "string",
-      "title": "Default Form Config (JSON)"
+      "title": "Default Checkout Field IDs (JSON)"
+    },
+    "default_sales_window_mins_before": {
+      "type": "number",
+      "title": "Sales Open (mins before event)"
+    },
+    "default_sales_close_mins_after_end": {
+      "type": "number",
+      "title": "Sales Close (mins after end)",
+      "default": 60
+    },
+    "default_waiver_text": {
+      "type": "string",
+      "title": "Default Waiver Text"
+    },
+    "default_terms_text": {
+      "type": "string",
+      "title": "Default Terms Text"
+    },
+    "default_show_marketing_opt_in": {
+      "type": "boolean",
+      "title": "Show Marketing Opt-In",
+      "default": false
     },
     "is_active": {
       "type": "boolean",

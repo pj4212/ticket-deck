@@ -43,7 +43,7 @@ export default function SeriesManagement() {
     async function load() {
       const [s, o] = await Promise.all([
         base44.entities.EventSeries.filter({ ...wsFilter }),
-        base44.entities.EventOccurrence.filter({ ...wsFilter })
+        base44.entities.Event.filter({ ...wsFilter })
       ]);
       setSeriesList(s.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
       setOccurrences(o);
@@ -52,15 +52,11 @@ export default function SeriesManagement() {
     load();
   }, [workspaceId]);
 
-  // Get unique source templates per series (deduplicated by name)
-  const getSourceTemplates = (seriesId) => {
-    const seriesOccs = occurrences.filter(o => o.series_id === seriesId);
-    const seen = new Set();
-    return seriesOccs.filter(o => {
-      if (seen.has(o.name)) return false;
-      seen.add(o.name);
-      return true;
-    });
+  // Get events linked to a series
+  const getSeriesEvents = (seriesId) => {
+    return occurrences
+      .filter(o => o.series_id === seriesId)
+      .sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
   };
 
   const openNew = () => {
@@ -91,10 +87,10 @@ export default function SeriesManagement() {
   const handleDeleteSeries = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
-    // Unlink any occurrences that belong to this series
+    // Unlink any events that belong to this series
     const linked = occurrences.filter(o => o.series_id === deleteTarget.id);
     for (const o of linked) {
-      await base44.entities.EventOccurrence.update(o.id, { series_id: '' });
+      await base44.entities.Event.update(o.id, { series_id: '' });
     }
     await base44.entities.EventSeries.delete(deleteTarget.id);
     setSeriesList(prev => prev.filter(s => s.id !== deleteTarget.id));
@@ -135,7 +131,7 @@ export default function SeriesManagement() {
           </TableHeader>
           <TableBody>
             {seriesList.map(s => {
-               const sourceTemplates = getSourceTemplates(s.id);
+               const sourceTemplates = getSeriesEvents(s.id);
                 const isExpanded = expandedSeries[s.id];
                 return (
                  <React.Fragment key={s.id}>
@@ -146,7 +142,7 @@ export default function SeriesManagement() {
                          {s.name}
                        </button>
                      </TableCell>
-                     <TableCell>{sourceTemplates.length} source{sourceTemplates.length !== 1 ? 's' : ''}</TableCell>
+                     <TableCell>{sourceTemplates.length} event{sourceTemplates.length !== 1 ? 's' : ''}</TableCell>
                      <TableCell><Badge variant={STATUS_COLORS[s.status] || 'secondary'}>{s.status}</Badge></TableCell>
                      <TableCell>
                        <div className="flex items-center gap-1">
@@ -155,10 +151,10 @@ export default function SeriesManagement() {
                            <Link to={`/admin/events?series=${s.id}`}><Calendar className="h-4 w-4" /></Link>
                          </Button>
                          <Button variant="ghost" size="icon" asChild title="View Public">
-                           <a href={`https://session-pass.com/series/${s.slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
+                           <a href={`/series/${s.slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-4 w-4" /></a>
                          </Button>
                          <Button variant="ghost" size="icon" title="Copy Link" onClick={() => {
-                           navigator.clipboard.writeText(`https://session-pass.com/series/${s.slug}`);
+                           navigator.clipboard.writeText(`${window.location.origin}/series/${s.slug}`);
                            toast.success('Link copied to clipboard');
                          }}>
                            <Copy className="h-4 w-4" />
@@ -209,7 +205,7 @@ export default function SeriesManagement() {
       {/* Mobile cards */}
       <div className="md:hidden space-y-3">
         {seriesList.map(s => {
-          const sourceTemplates = getSourceTemplates(s.id);
+          const sourceTemplates = getSeriesEvents(s.id);
            const isExpanded = expandedSeries[s.id];
            return (
              <div key={s.id} className="border rounded-lg bg-card">
@@ -221,7 +217,7 @@ export default function SeriesManagement() {
                   </button>
                   <Badge variant={STATUS_COLORS[s.status] || 'secondary'}>{s.status}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3 pl-6">{sourceTemplates.length} source{sourceTemplates.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-muted-foreground mb-3 pl-6">{sourceTemplates.length} event{sourceTemplates.length !== 1 ? 's' : ''}</p>
                 <div className="flex flex-wrap gap-1">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(s)} className="gap-1.5 text-xs h-8">
                     <Edit className="h-3.5 w-3.5" />Edit
@@ -230,10 +226,10 @@ export default function SeriesManagement() {
                     <Link to={`/admin/events?series=${s.id}`}><Calendar className="h-3.5 w-3.5" />Sessions</Link>
                   </Button>
                   <Button variant="ghost" size="sm" asChild className="gap-1.5 text-xs h-8">
-                    <a href={`https://session-pass.com/series/${s.slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" />View</a>
+                    <a href={`/series/${s.slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="h-3.5 w-3.5" />View</a>
                   </Button>
                   <Button variant="ghost" size="sm" className="gap-1.5 text-xs h-8" onClick={() => {
-                    navigator.clipboard.writeText(`https://session-pass.com/series/${s.slug}`);
+                    navigator.clipboard.writeText(`${window.location.origin}/series/${s.slug}`);
                     toast.success('Link copied to clipboard');
                   }}>
                     <Copy className="h-3.5 w-3.5" />Copy
