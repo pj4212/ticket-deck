@@ -1,78 +1,56 @@
-import { AlertTriangle, XCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, Clock, XCircle, CheckCircle2 } from 'lucide-react';
 
 export default function EventStatusBanner({ event, ticketTypes }) {
   if (!event) return null;
 
-  // Check sold out
-  const allSoldOut = ticketTypes.length > 0 && ticketTypes.every(tt => {
-    if (!tt.is_active) return true;
-    if (!tt.capacity_limit) return false;
-    return (tt.quantity_sold || 0) >= tt.capacity_limit;
-  });
-
   const now = new Date().toISOString();
-  const salesClosed = event.sales_close_at && now > event.sales_close_at;
-  const salesNotOpen = event.sales_open_at && now < event.sales_open_at;
 
   if (event.status === 'cancelled') {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-        <XCircle className="h-5 w-5 text-destructive shrink-0" />
-        <div>
-          <p className="font-medium text-destructive">Event Cancelled</p>
-          <p className="text-sm text-muted-foreground">This event has been cancelled by the organiser.</p>
-        </div>
-      </div>
+      <Alert variant="destructive" className="mb-6">
+        <XCircle className="h-4 w-4" />
+        <AlertDescription>This event has been cancelled.</AlertDescription>
+      </Alert>
     );
   }
 
   if (event.status === 'completed') {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-muted border border-border">
-        <CheckCircle2 className="h-5 w-5 text-muted-foreground shrink-0" />
-        <div>
-          <p className="font-medium text-foreground">Event Completed</p>
-          <p className="text-sm text-muted-foreground">This event has already taken place.</p>
-        </div>
-      </div>
+      <Alert className="mb-6 border-muted">
+        <CheckCircle2 className="h-4 w-4" />
+        <AlertDescription>This event has ended.</AlertDescription>
+      </Alert>
     );
   }
 
-  if (allSoldOut) {
+  if (event.status !== 'published') {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-        <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
-        <div>
-          <p className="font-medium text-destructive">Sold Out</p>
-          <p className="text-sm text-muted-foreground">All tickets for this event have been sold.</p>
-        </div>
-      </div>
+      <Alert className="mb-6 border-muted">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>This event is not currently available.</AlertDescription>
+      </Alert>
     );
   }
 
-  if (salesClosed) {
+  if (event.sales_open_at && now < event.sales_open_at) {
+    const openDate = new Date(event.sales_open_at).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+    });
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-muted border border-border">
-        <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
-        <div>
-          <p className="font-medium text-foreground">Sales Closed</p>
-          <p className="text-sm text-muted-foreground">Ticket sales for this event have ended.</p>
-        </div>
-      </div>
+      <Alert className="mb-6 border-primary/20 bg-primary/5">
+        <Clock className="h-4 w-4 text-primary" />
+        <AlertDescription>Sales open {openDate}</AlertDescription>
+      </Alert>
     );
   }
 
-  if (salesNotOpen) {
+  if (event.sales_close_at && now > event.sales_close_at) {
     return (
-      <div className="flex items-center gap-3 p-4 rounded-lg bg-primary/5 border border-primary/20">
-        <Clock className="h-5 w-5 text-primary shrink-0" />
-        <div>
-          <p className="font-medium text-foreground">Sales Opening Soon</p>
-          <p className="text-sm text-muted-foreground">
-            Tickets go on sale {new Date(event.sales_open_at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })}.
-          </p>
-        </div>
-      </div>
+      <Alert className="mb-6 border-muted">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>Sales have closed for this event.</AlertDescription>
+      </Alert>
     );
   }
 

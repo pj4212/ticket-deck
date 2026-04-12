@@ -193,9 +193,9 @@ export default function Reports() {
     const res = await base44.functions.invoke('syncStripeFees', {});
     setSyncResult(res.data);
     setSyncing(false);
-    toast.success(`Synced ${res.data.synced} orders. Actual fees: $${res.data.total_actual_fees.toFixed(2)} vs estimated: $${res.data.total_estimated_fees.toFixed(2)}`);
+    toast.success(`Synced ${res.data.synced} orders. Actual fees: ${fmtC(res.data.total_actual_fees)} vs estimated: ${fmtC(res.data.total_estimated_fees)}`);
     // Reload orders to pick up stripe_fee
-    const freshOrders = await base44.entities.Order.filter({});
+    const freshOrders = await base44.entities.Order.filter({ ...wsFilter });
     setOrders(freshOrders);
   }
 
@@ -317,9 +317,9 @@ export default function Reports() {
               </div>
               <p className="text-muted-foreground">Synced {syncResult.synced} orders · Skipped {syncResult.skipped} · Errors {syncResult.errors}</p>
               <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-border">
-                <div><p className="text-xs text-muted-foreground">Estimated Fees</p><p className="font-semibold">${syncResult.total_estimated_fees.toFixed(2)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Actual Fees</p><p className="font-semibold">${syncResult.total_actual_fees.toFixed(2)}</p></div>
-                <div><p className="text-xs text-muted-foreground">Difference</p><p className="font-semibold ${syncResult.difference > 0 ? 'text-red-400' : 'text-emerald-400'}">{syncResult.difference >= 0 ? '+' : ''}${syncResult.difference.toFixed(2)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Estimated Fees</p><p className="font-semibold">{fmtC(syncResult.total_estimated_fees)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Actual Fees</p><p className="font-semibold">{fmtC(syncResult.total_actual_fees)}</p></div>
+                <div><p className="text-xs text-muted-foreground">Difference</p><p className={`font-semibold ${syncResult.difference > 0 ? 'text-red-400' : 'text-emerald-400'}`}>{syncResult.difference >= 0 ? '+' : ''}{fmtC(syncResult.difference)}</p></div>
               </div>
             </div>
           )}

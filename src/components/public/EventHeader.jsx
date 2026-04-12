@@ -1,112 +1,69 @@
+import { Calendar, Clock, MapPin, Globe, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, Wifi, Monitor, Users, ExternalLink, Car } from 'lucide-react';
-
-function fmtDateLong(d) {
-  if (!d) return '';
-  const [y, m, day] = d.slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-}
-
-function fmtTime(d) {
-  if (!d) return '';
-  const match = d.match(/T(\d{2}):(\d{2})/);
-  if (match) {
-    const h = parseInt(match[1], 10);
-    return `${h % 12 || 12}:${match[2]} ${h >= 12 ? 'pm' : 'am'}`;
-  }
-  return '';
-}
-
-function ModeBadge({ mode }) {
-  if (mode === 'online_stream') return <Badge className="gap-1 bg-blue-500/10 text-blue-400 border-blue-500/20"><Wifi className="h-3 w-3" />Online</Badge>;
-  if (mode === 'hybrid') return <Badge className="gap-1 bg-purple-500/10 text-purple-400 border-purple-500/20"><Monitor className="h-3 w-3" />Hybrid</Badge>;
-  return <Badge className="gap-1 bg-green-500/10 text-green-400 border-green-500/20"><Users className="h-3 w-3" />In-Person</Badge>;
-}
+import { formatEventDate, formatEventTime, getTimezoneAbbr } from '@/lib/formatters';
+import AddToCalendar from '@/components/booking/AddToCalendar';
 
 export default function EventHeader({ event, venue, workspace }) {
   if (!event) return null;
 
+  const tz = event.timezone || workspace?.default_timezone || 'UTC';
+  const numLocale = workspace?.default_number_format || 'en-US';
+  const dateStr = formatEventDate(event.start_datetime, tz, numLocale);
+  const startTime = formatEventTime(event.start_datetime, tz, numLocale);
+  const endTime = formatEventTime(event.end_datetime, tz, numLocale);
+  const tzAbbr = getTimezoneAbbr(tz);
+
+  const isOnline = event.event_mode === 'online_stream';
+  const isHybrid = event.event_mode === 'hybrid';
+
   return (
-    <div className="space-y-6">
-      {/* Event title & mode */}
-      <div>
-        <div className="flex items-center gap-2 flex-wrap mb-3">
-          <ModeBadge mode={event.event_mode} />
-          {workspace && (
-            <span className="text-xs text-muted-foreground">
-              by <span className="font-medium text-foreground">{workspace.name}</span>
-            </span>
-          )}
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground leading-tight">{event.name}</h1>
+    <div className="space-y-4">
+      {/* Event mode badges */}
+      <div className="flex flex-wrap gap-2">
+        {isOnline && <Badge variant="secondary" className="gap-1"><Video className="h-3 w-3" />Online Event</Badge>}
+        {isHybrid && <Badge variant="secondary" className="gap-1"><Globe className="h-3 w-3" />Hybrid Event</Badge>}
+        {event.scheduling_mode === 'timed_entry' && <Badge variant="outline">Timed Entry</Badge>}
       </div>
 
-      {/* Date & time */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <Calendar className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">{fmtDateLong(event.event_date)}</p>
-            <p className="text-sm text-muted-foreground">
-              {fmtTime(event.start_datetime)} – {fmtTime(event.end_datetime)}
-              {event.timezone && <span className="ml-1">({event.timezone})</span>}
-            </p>
-          </div>
-        </div>
+      <h1 className="text-2xl sm:text-3xl font-bold text-foreground leading-tight">{event.name}</h1>
+
+      {/* Date & Time */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Calendar className="h-4 w-4 text-primary shrink-0" />
+          {dateStr}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Clock className="h-4 w-4 text-primary shrink-0" />
+          {startTime} – {endTime} {tzAbbr}
+        </span>
       </div>
 
-      {/* Location */}
-      {(event.event_mode === 'in_person' || event.event_mode === 'hybrid') && (
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <MapPin className="h-5 w-5 text-primary" />
-          </div>
+      {/* Venue */}
+      {venue && (
+        <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <div>
-            {venue ? (
-              <>
-                <p className="font-medium text-foreground">{venue.name}</p>
-                {venue.address && <p className="text-sm text-muted-foreground">{venue.address}</p>}
-                <div className="flex gap-3 mt-1.5">
-                  {venue.venue_link && (
-                    <a href={venue.venue_link} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <ExternalLink className="h-3 w-3" />View Map
-                    </a>
-                  )}
-                  {venue.parking_link && (
-                    <a href={venue.parking_link} target="_blank" rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline flex items-center gap-1">
-                      <Car className="h-3 w-3" />Parking
-                    </a>
-                  )}
-                </div>
-                {venue.details && (
-                  <p className="text-sm text-muted-foreground mt-1.5">{venue.details}</p>
-                )}
-              </>
-            ) : (
-              <p className="font-medium text-foreground">{event.venue_details || 'Venue TBA'}</p>
+            <span className="font-medium text-foreground">{venue.name}</span>
+            {venue.address_line_1 && <span className="ml-1">— {venue.address_line_1}{venue.city ? `, ${venue.city}` : ''}</span>}
+            {venue.venue_link && (
+              <a href={venue.venue_link} target="_blank" rel="noopener noreferrer" className="ml-2 text-primary hover:underline text-xs">
+                Map
+              </a>
             )}
           </div>
         </div>
       )}
 
-      {/* Online indicator */}
-      {(event.event_mode === 'online_stream' || event.event_mode === 'hybrid') && (
-        <div className="flex items-start gap-3">
-          <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
-            <Wifi className="h-5 w-5 text-blue-400" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Online Event</p>
-            <p className="text-sm text-muted-foreground">
-              Join link will be sent with your ticket confirmation.
-            </p>
-          </div>
-        </div>
+      {/* Organizer */}
+      {workspace && (
+        <p className="text-sm text-muted-foreground">
+          Organized by <span className="font-medium text-foreground">{workspace.name}</span>
+        </p>
       )}
+
+      {/* Add to calendar */}
+      <AddToCalendar event={event} venue={venue} />
     </div>
   );
 }

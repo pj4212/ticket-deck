@@ -154,11 +154,9 @@ export default function PublicLayout() {
                 </Button>
               </>
             )}
-          </div>
-
-          {/* Language selector (desktop) */}
-          <div className="hidden lg:flex">
-            <LanguageSelector languages={languages} currentLocale={locale} />
+            {languages.length > 1 && (
+              <LanguageSelector languages={languages} currentLocale={locale} />
+            )}
           </div>
 
           {/* Mobile hamburger */}
