@@ -34,17 +34,21 @@ export default function Reports() {
   const [dateTo, setDateTo] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [customFields, setCustomFields] = useState([]);
+  const [fieldValues, setFieldValues] = useState({});
 
   useEffect(() => {
     async function load() {
-      const [rawTix, ords, occs, tts, locs, mList, lList] = await Promise.all([
+      const [rawTix, ords, occs, tts, locs, mList, lList, cfDefs, cfVals] = await Promise.all([
         base44.entities.Ticket.filter({}),
         base44.entities.Order.filter({ ...wsFilter }),
         base44.entities.Event.filter({ ...wsFilter }),
         base44.entities.TicketType.filter({ ...wsFilter }),
         base44.entities.Location.filter({ ...wsFilter }),
         base44.entities.PlatformUser.filter({}).catch(() => []),
-        base44.entities.PlatformUser.filter({}).catch(() => [])
+        base44.entities.PlatformUser.filter({}).catch(() => []),
+        base44.entities.CustomFieldDefinition.filter({ ...wsFilter, is_reportable: true }).catch(() => []),
+        base44.entities.FieldValue.filter({}).catch(() => []),
       ]);
       // Filter tickets to workspace events (tickets may lack workspace_id)
       const wsEventIds = new Set(occs.map(o => o.id));
@@ -62,6 +66,16 @@ export default function Reports() {
       const lMap = {};
       lList.forEach(l => { lMap[l.id] = l; });
       setLeaders(lMap);
+      setCustomFields(cfDefs.filter(cf => cf.applies_to === 'checkout' || cf.applies_to === 'ticket'));
+      // Index field values by owner
+      const fvMap = {};
+      cfVals.forEach(fv => {
+        if (!fvMap[fv.owner_id]) fvMap[fv.owner_id] = {};
+        let val = fv.value_json || '';
+        try { val = JSON.parse(val); } catch (_) {}
+        fvMap[fv.owner_id][fv.field_definition_id] = val;
+      });
+      setFieldValues(fvMap);
       setLoading(false);
     }
     load();
@@ -173,10 +187,12 @@ export default function Reports() {
 
       <Tabs defaultValue="occurrence">
         <TabsList className="flex-wrap">
-          <TabsTrigger value="occurrence">By Occurrence</TabsTrigger>
+          <TabsTrigger value="occurrence">By Event</TabsTrigger>
           <TabsTrigger value="type">By Type</TabsTrigger>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="refunds">Refunds</TabsTrigger>
           <TabsTrigger value="checkin">Check-In</TabsTrigger>
+          <TabsTrigger value="attendee">Attendee Export</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
         </TabsList>
 
@@ -288,7 +304,50 @@ export default function Reports() {
           </div>
         </TabsContent>
 
+        <TabsContent value="refunds" className="space-y-3">
+          {(() => {
+            const refundedOrders = orders.filter(o => o.payment_status === 'refunded' || o.payment_status === 'partially_refunded');
+            const totalRefunds = refundedOrders.reduce((s, o) => s + (o.total_amount || 0), 0);
+            const refundsByEvent = filteredOccurrences.map(o => {
+              const eRefunds = refundedOrders.filter(r => r.event_id === o.id);
+              return { name: o.name, date: o.event_date, count: eRefunds.length, amount: eRefunds.reduce((s, r) => s + (r.total_amount || 0), 0) };
+            }).filter(r => r.count > 0);
+            return (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Refunds</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-red-400">${totalRefunds.toFixed(2)}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Refunded Orders</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{refundedOrders.length}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Refund Rate</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{orders.length > 0 ? Math.round(refundedOrders.length / orders.length * 100) : 0}%</p></CardContent></Card>
+                </div>
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(
+                    ['Event', 'Date', 'Refunds', 'Amount'],
+                    refundsByEvent.map(r => [r.name, r.date, r.count, r.amount.toFixed(2)]),
+                    'refund-report.csv'
+                  )}><Download className="h-4 w-4 mr-1" />CSV</Button>
+                </div>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Event</TableHead><TableHead>Date</TableHead><TableHead>Refunds</TableHead><TableHead>Amount</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {refundsByEvent.map((r, i) => (
+                        <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.count}</TableCell><TableCell className="text-red-400">${r.amount.toFixed(2)}</TableCell></TableRow>
+                      ))}
+                      {refundsByEvent.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No refunds</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
         <TabsContent value="checkin" className="space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Checked In</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-emerald-400">{occurrenceReport.reduce((s, r) => s + r.checkedIn, 0)}</p></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">No-Shows</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-amber-400">{occurrenceReport.reduce((s, r) => s + (r.sold - r.checkedIn), 0)}</p></CardContent></Card>
+            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Avg Check-In Rate</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{occurrenceReport.length > 0 ? Math.round(occurrenceReport.reduce((s, r) => s + r.rate, 0) / occurrenceReport.length) : 0}%</p></CardContent></Card>
+          </div>
           <div className="flex justify-end">
             <Button variant="outline" size="sm" onClick={() => exportCsv(
               ['Event', 'Date', 'Sold', 'Checked In', 'No Shows', 'Rate %'],
@@ -306,12 +365,62 @@ export default function Reports() {
                 {occurrenceReport.map((r, i) => (
                   <TableRow key={i}>
                     <TableCell>{r.name}</TableCell><TableCell>{r.date}</TableCell><TableCell>{r.sold}</TableCell>
-                    <TableCell>{r.checkedIn}</TableCell><TableCell>{r.sold - r.checkedIn}</TableCell><TableCell>{r.rate}%</TableCell>
+                    <TableCell className="text-emerald-400">{r.checkedIn}</TableCell><TableCell className="text-amber-400">{r.sold - r.checkedIn}</TableCell><TableCell>{r.rate}%</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="attendee" className="space-y-3">
+          <p className="text-sm text-muted-foreground">Export attendee data with custom fields included. Select an event or export all.</p>
+          {(() => {
+            const cfHeaders = customFields.map(cf => cf.label);
+            const baseHeaders = ['Event', 'Date', 'Name', 'Email', 'Ticket Type', 'Mode', 'Check-In', 'Status'];
+            const allHeaders = [...baseHeaders, ...cfHeaders];
+            const rows = activeTickets.filter(t => {
+              const occ = occMap[t.event_id];
+              if (dateFrom && occ?.event_date < dateFrom) return false;
+              if (dateTo && occ?.event_date > dateTo) return false;
+              return true;
+            }).map(t => {
+              const occ = occMap[t.event_id];
+              const base = [
+                occ?.name || '', occ?.event_date || '',
+                `${t.attendee_first_name} ${t.attendee_last_name}`, t.attendee_email,
+                ttMap[t.ticket_type_id]?.name || '', t.attendance_mode || '',
+                t.check_in_status, t.ticket_status
+              ];
+              const cfValues = customFields.map(cf => {
+                const vals = fieldValues[t.id] || fieldValues[t.order_id] || {};
+                return vals[cf.id] || '';
+              });
+              return [...base, ...cfValues];
+            });
+            return (
+              <>
+                <div className="flex justify-between items-center">
+                  <p className="text-sm">{rows.length} attendees in date range</p>
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(allHeaders, rows, 'attendee-export.csv')}>
+                    <Download className="h-4 w-4 mr-1" />Export CSV{cfHeaders.length > 0 ? ` (+ ${cfHeaders.length} custom fields)` : ''}
+                  </Button>
+                </div>
+                <div className="border rounded-lg overflow-auto max-h-[400px]">
+                  <Table>
+                    <TableHeader><TableRow>{allHeaders.map(h => <TableHead key={h}>{h}</TableHead>)}</TableRow></TableHeader>
+                    <TableBody>
+                      {rows.slice(0, 50).map((r, i) => (
+                        <TableRow key={i}>{r.map((c, j) => <TableCell key={j} className="text-xs whitespace-nowrap">{c}</TableCell>)}</TableRow>
+                      ))}
+                      {rows.length > 50 && <TableRow><TableCell colSpan={allHeaders.length} className="text-center text-muted-foreground text-xs">Showing first 50 of {rows.length} — download CSV for full data</TableCell></TableRow>}
+                      {rows.length === 0 && <TableRow><TableCell colSpan={allHeaders.length} className="text-center py-8 text-muted-foreground">No attendees in date range</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
         </TabsContent>
 
         <TabsContent value="team" className="space-y-6">

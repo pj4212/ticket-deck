@@ -12,6 +12,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Edit, Shield, Loader2, Search, Building2 } from 'lucide-react';
 
+const WORKSPACE_ROLES = [
+  { value: 'workspace_owner', label: 'Workspace Owner' },
+  { value: 'workspace_admin', label: 'Workspace Admin' },
+  { value: 'event_manager', label: 'Event Manager' },
+  { value: 'scanner', label: 'Scanner' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'report_viewer', label: 'Report Viewer' },
+  { value: 'support', label: 'Support' },
+];
 const ROLES = ['super_admin', 'event_admin', 'scanner', 'user'];
 const MULTI_WORKSPACE_EMAILS = ['mmci1525@gmail.com'];
 
@@ -166,8 +175,8 @@ export default function UserManagement() {
                 <TableCell>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(u)}><Edit className="h-4 w-4" /></Button>
-                    {(u.role === 'scanner') && (
-                      <Button variant="ghost" size="icon" onClick={() => openScannerAssignments(u)} title="Scanner Assignments">
+                    {(u.role === 'scanner' || u.role === 'event_admin' || u.role === 'super_admin') && (
+                      <Button variant="ghost" size="icon" onClick={() => openScannerAssignments(u)} title="Scanner & Access Assignments">
                         <Shield className="h-4 w-4" />
                       </Button>
                     )}

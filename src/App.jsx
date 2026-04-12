@@ -18,6 +18,11 @@ import SeriesManagement from './pages/admin/SeriesManagement';
 import PastSessions from './pages/admin/PastSessions';
 import TemplateManager from './pages/admin/TemplateManager';
 
+// Lazy-loaded admin settings pages
+const VenueManagement = React.lazy(() => import('./pages/admin/VenueManagement'));
+const CustomDomainSettings = React.lazy(() => import('./pages/admin/CustomDomainSettings'));
+const EmbedSettings = React.lazy(() => import('./pages/admin/EmbedSettings'));
+
 // Lazy-loaded pages
 const Home = React.lazy(() => import('./pages/Home'));
 const EventPage = React.lazy(() => import('./pages/EventPage'));
@@ -127,6 +132,9 @@ const AuthenticatedApp = () => {
             <Route path="settings/emails" element={<EmailManagement />} />
             <Route path="settings/webhooks" element={<WebhookSettings />} />
             <Route path="settings/custom-fields" element={<CustomFieldManager />} />
+            <Route path="venues" element={<VenueManagement />} />
+            <Route path="settings/domains" element={<CustomDomainSettings />} />
+            <Route path="settings/embed" element={<EmbedSettings />} />
           </Route>
           <Route path="/scanner" element={<ScannerLayout />}>
             <Route index element={<ScannerHome />} />

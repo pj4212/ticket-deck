@@ -34,6 +34,8 @@ export default function AttendeeList() {
   const [allOccurrences, setAllOccurrences] = useState([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [customFields, setCustomFields] = useState([]);
+  const [fieldValues, setFieldValues] = useState({});
 
   useEffect(() => {
     loadData();
@@ -41,13 +43,15 @@ export default function AttendeeList() {
 
   async function loadData(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
-    const [occs, tix, tts, mList, lList, ords] = await Promise.all([
+    const [occs, tix, tts, mList, lList, ords, cfDefs, cfVals] = await Promise.all([
       base44.entities.Event.filter({ id }),
       base44.entities.Ticket.filter({ event_id: id }),
       base44.entities.TicketType.filter({ event_id: id }),
       base44.entities.PlatformUser.filter({}).catch(() => []),
       base44.entities.PlatformUser.filter({}).catch(() => []),
-      base44.entities.Order.filter({})
+      base44.entities.Order.filter({}),
+      base44.entities.CustomFieldDefinition.filter({ is_reportable: true }).catch(() => []),
+      base44.entities.FieldValue.filter({}).catch(() => []),
     ]);
     if (occs.length) setOccurrence(occs[0]);
     setTickets(tix);
@@ -63,6 +67,15 @@ export default function AttendeeList() {
     const oMap = {};
     ords.forEach(o => { oMap[o.id] = o; });
     setOrders(oMap);
+    setCustomFields(cfDefs.filter(cf => cf.applies_to === 'checkout' || cf.applies_to === 'ticket'));
+    const fvMap = {};
+    cfVals.forEach(fv => {
+      if (!fvMap[fv.owner_id]) fvMap[fv.owner_id] = {};
+      let val = fv.value_json || '';
+      try { val = JSON.parse(val); } catch (_) {}
+      fvMap[fv.owner_id][fv.field_definition_id] = val;
+    });
+    setFieldValues(fvMap);
     setLoading(false);
     setRefreshing(false);
   }
@@ -171,16 +184,23 @@ export default function AttendeeList() {
   };
 
   const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Ticket Type', 'Category', 'Leader', 'Check-In', 'Status'];
-    const rows = filtered.map(t => [
-      `${t.attendee_first_name} ${t.attendee_last_name}`,
-      t.attendee_email,
-      ticketTypes[t.ticket_type_id]?.name || '',
-      ticketTypes[t.ticket_type_id]?.ticket_category === 'business_owner' ? 'Business Owner' : 'Candidate',
-      leaders[t.platinum_leader_id]?.name || '',
-      t.check_in_status,
-      t.ticket_status
-    ]);
+    const cfHeaders = customFields.map(cf => cf.label);
+    const headers = ['Name', 'Email', 'Ticket Type', 'Mode', 'Check-In', 'Status', ...cfHeaders];
+    const rows = filtered.map(t => {
+      const cfValues = customFields.map(cf => {
+        const vals = fieldValues[t.id] || fieldValues[t.order_id] || {};
+        return vals[cf.id] || '';
+      });
+      return [
+        `${t.attendee_first_name} ${t.attendee_last_name}`,
+        t.attendee_email,
+        ticketTypes[t.ticket_type_id]?.name || '',
+        t.attendance_mode || '',
+        t.check_in_status,
+        t.ticket_status,
+        ...cfValues,
+      ];
+    });
     const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
