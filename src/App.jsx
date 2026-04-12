@@ -31,6 +31,7 @@ const ScannerHome = React.lazy(() => import('./pages/scanner/ScannerHome'));
 const ScannerDashboard = React.lazy(() => import('./pages/scanner/ScannerDashboard'));
 const QRScanner = React.lazy(() => import('./pages/scanner/QRScanner'));
 const ManualCheckinList = React.lazy(() => import('./pages/scanner/ManualCheckinList'));
+const BrowseEvents = React.lazy(() => import('./pages/BrowseEvents'));
 const EventForm = React.lazy(() => import('./pages/admin/EventForm'));
 const AttendeeList = React.lazy(() => import('./pages/admin/AttendeeList'));
 const UserManagement = React.lazy(() => import('./pages/admin/UserManagement'));
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
+            <Route path="/events" element={<BrowseEvents />} />
             <Route path="/event/:slug" element={<EventPage />} />
             <Route path="/series/:slug" element={<SeriesPage />} />
             <Route path="/order/:orderNumber" element={<OrderConfirmation />} />

@@ -20,7 +20,7 @@ async function withRetry(fn, label = 'op', maxRetries = 5) {
 
 function generateOrderNumber() {
   const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  return `SP-${d}-${Math.floor(1000 + Math.random() * 9000)}`;
+  return `TD-${d}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 async function generateQrHash(ticketId, eventId) {
@@ -407,7 +407,7 @@ async function initiatePaidOrder(base44, ctx) {
     };
   });
 
-  const baseUrl = origin_url || 'https://session-pass.com';
+  const baseUrl = origin_url || 'https://ticket-deck.com';
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ['card'],
     line_items: lineItems,
@@ -455,7 +455,7 @@ async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBu
       to: order.buyer_email,
       subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
       body: receiptHtml,
-      from_name: 'Session Pass',
+      from_name: 'Ticket Deck',
     });
   }
 

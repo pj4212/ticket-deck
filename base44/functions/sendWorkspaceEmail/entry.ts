@@ -6,7 +6,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 async function getWorkspaceBrand(base44, workspaceId) {
   const defaults = {
-    senderName: 'Session Pass',
+    senderName: 'Ticket Deck',
     headerBg: '#0f172a', accentColor: '#818cf8', buttonBg: '#6366f1',
     logoUrl: '', supportEmail: '',
   };
@@ -130,7 +130,7 @@ async function sendAndLog(base44, workspaceId, emailType, recipientEmail, subjec
   });
 
   try {
-    await base44.asServiceRole.integrations.Core.SendEmail({ to: recipientEmail, subject, body: html, from_name: 'Session Pass' });
+    await base44.asServiceRole.integrations.Core.SendEmail({ to: recipientEmail, subject, body: html, from_name: 'Ticket Deck' });
     await base44.asServiceRole.entities.EmailLog.update(log.id, { status: 'sent', sent_at: new Date().toISOString() });
     return { success: true, log_id: log.id };
   } catch (err) {

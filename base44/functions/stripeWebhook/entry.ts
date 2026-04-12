@@ -362,7 +362,7 @@ async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBu
 
     await base44.asServiceRole.integrations.Core.SendEmail({
       to: order.buyer_email, subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
-      body: receiptHtml, from_name: 'Session Pass',
+      body: receiptHtml, from_name: 'Ticket Deck',
     });
   }
 
