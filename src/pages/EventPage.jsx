@@ -17,6 +17,7 @@ import WaitlistForm from '@/components/booking/WaitlistForm';
 import WaiverTerms from '@/components/booking/WaiverTerms';
 import TimeSlotPicker from '@/components/booking/TimeSlotPicker';
 import { validateCheckout } from '@/components/booking/CheckoutValidation';
+import useWorkspaceLocale from '@/hooks/useWorkspaceLocale';
 
 const BUYER_KEY = 'sp_buyer';
 
@@ -314,6 +315,7 @@ export default function EventPage() {
   };
 
   // ── Render ──
+  const { currency, numberLocale } = useWorkspaceLocale(workspace, event);
 
   if (loading) {
     return (
@@ -392,6 +394,8 @@ export default function EventPage() {
             onSelectionsChange={setSelections}
             eventId={event.id}
             workspaceId={event.workspace_id}
+            currency={currency}
+            numberLocale={numberLocale}
           />
 
           {/* Discount Code */}
@@ -407,6 +411,8 @@ export default function EventPage() {
             selections={selections}
             ticketTypes={ticketTypes}
             discount={appliedDiscount}
+            currency={currency}
+            numberLocale={numberLocale}
             slotLabel={selectedSlotId ? (() => {
               const sl = timeSlots.find(s => s.id === selectedSlotId);
               if (!sl) return '';

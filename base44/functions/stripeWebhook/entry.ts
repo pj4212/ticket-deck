@@ -355,13 +355,19 @@ async function handleChargeRefunded(base44, charge, workspaceId) {
 
 // ── Email sending (workspace-branded) ──
 
-function fmtDate(d) {
+function fmtDate(d, tz) {
   if (!d) return '';
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dt = new Date(d.includes('T') ? d : d + 'T00:00:00Z');
+  return dt.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz || 'UTC' });
 }
-function fmtTime(d) {
+function fmtTime(d, tz) {
   if (!d) return '';
-  return new Date(d).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const dt = new Date(d);
+  return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz || 'UTC' });
+}
+function fmtCurrency(amount, currency) {
+  if (!amount && amount !== 0) return 'Free';
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(amount); } catch { return `${currency} ${amount.toFixed(2)}`; }
 }
 
 async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBuyer) {
@@ -374,10 +380,11 @@ async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBu
     console.error('Workspace email fallback, using inline:', e.message);
     // Inline fallback
     const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
-    const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
+    const cur = order.currency || 'USD';
+    const total = order.total_amount > 0 ? fmtCurrency(order.total_amount, cur) : 'Free';
     const rows = tickets.map(t => {
       const tt = ttMap[t.ticket_type_id];
-      const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
+      const price = tt?.price > 0 ? fmtCurrency(tt.price, cur) : 'Free';
       return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
     }).join('');
     const receiptHtml = `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Your booking for <strong>${event.name}</strong> is confirmed.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="2" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;

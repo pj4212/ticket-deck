@@ -7,6 +7,7 @@ import { Loader2, Calendar, Clock, CheckCircle2, MapPin, Monitor, Download, XCir
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/admin/OrderStatusBadge';
 import TicketCard from '@/components/booking/TicketCard';
 import AddToCalendar from '@/components/booking/AddToCalendar';
+import { formatCurrency, formatEventDate, formatEventTime } from '@/lib/formatters';
 
 export default function OrderConfirmation() {
   const { orderNumber } = useParams();
@@ -87,8 +88,11 @@ export default function OrderConfirmation() {
   const isRefundRequested = order.order_status === 'refund_requested';
   const isConfirmed = (order.payment_status === 'completed' || order.payment_status === 'free') && order.order_status === 'confirmed';
 
-  const fmtDate = (d) => { if (!d) return ''; const [y,m,day]=d.slice(0,10).split('-').map(Number); return new Date(y,m-1,day).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); };
-  const fmtTime = (d) => { if (!d) return ''; const match = d.match(/T(\d{2}):(\d{2})/); if(match){const h=parseInt(match[1],10);return `${h%12||12}:${match[2]} ${h>=12?'pm':'am'}`;} return ''; };
+  const tz = event?.timezone || 'UTC';
+  const cur = order.currency || 'USD';
+  const loc = 'en-US';
+  const fmtDate = (d) => d ? formatEventDate(d + (d.includes('T') ? '' : 'T00:00:00'), tz, loc, { weekday: 'long' }) : '';
+  const fmtTime = (d) => d ? formatEventTime(d, tz, loc) : '';
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -145,7 +149,7 @@ export default function OrderConfirmation() {
 
       {order.total_amount > 0 && (
         <div className="mt-6 p-4 border rounded-xl bg-card">
-          <div className="flex justify-between font-semibold"><span>Total Paid</span><span>${order.total_amount.toFixed(2)} {order.currency || 'AUD'}</span></div>
+          <div className="flex justify-between font-semibold"><span>Total Paid</span><span>{formatCurrency(order.total_amount, cur, loc)}</span></div>
         </div>
       )}
 

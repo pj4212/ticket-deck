@@ -50,6 +50,19 @@ Deno.serve(async (req) => {
     if (!events.length) return Response.json({ error: "Event not found" }, { status: 404 });
     const event = events[0];
 
+    // 1b. LOAD WORKSPACE for currency/tax
+    let workspace = null;
+    if (event.workspace_id) {
+      const wsList = await withRetry(() => base44.asServiceRole.entities.Workspace.filter({ id: event.workspace_id }), 'load workspace');
+      if (wsList.length) workspace = wsList[0];
+    }
+    const orderCurrency = event.currency || workspace?.default_currency || 'USD';
+
+    // Resolve tax settings
+    const taxMode = (event.tax_mode_override && event.tax_mode_override !== 'inherit') ? event.tax_mode_override : (workspace?.tax_mode || 'none');
+    const taxRate = (event.tax_rate_override != null && event.tax_mode_override !== 'inherit') ? event.tax_rate_override : (workspace?.tax_rate_percent || 0);
+    const taxLabel = event.tax_label_override || workspace?.tax_label || 'Tax';
+
     // 2. ACCESS RULES
     const accessError = enforceEventAccess(event, body.access_password);
     if (accessError) return Response.json({ error: accessError }, { status: 403 });
@@ -195,7 +208,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    let totalAmount = Math.max(0, subtotalAmount - discountAmount);
+    // Calculate tax
+    let taxAmount = 0;
+    let finalSubtotal = subtotalAmount - discountAmount;
+    let totalAmount = finalSubtotal;
+    if (taxMode === 'exclusive' && taxRate > 0 && finalSubtotal > 0) {
+      taxAmount = Math.round(finalSubtotal * (taxRate / 100) * 100) / 100;
+      totalAmount = Math.round((finalSubtotal + taxAmount) * 100) / 100;
+    } else if (taxMode === 'inclusive' && taxRate > 0 && finalSubtotal > 0) {
+      const rate = taxRate / 100;
+      const sub = finalSubtotal / (1 + rate);
+      taxAmount = Math.round((finalSubtotal - sub) * 100) / 100;
+      // totalAmount stays the same (tax is inside the price)
+    }
+    totalAmount = Math.max(0, totalAmount);
     const isFree = totalAmount === 0;
     const orderNumber = generateOrderNumber();
 
@@ -205,6 +231,7 @@ Deno.serve(async (req) => {
         draft, event, orderItems, ttMap, buyer, totalAmount, orderNumber,
         send_all_to_buyer: !!send_all_to_buyer, inPersonCounts, origin_url,
         slotInfo, time_slot_id,
+        finalSubtotal: Math.max(0, subtotalAmount - discountAmount), taxAmount, taxMode, taxRate, taxLabel, discountAmount, orderCurrency,
       });
     } else {
       // ── PAID ORDER FLOW ──
@@ -213,6 +240,7 @@ Deno.serve(async (req) => {
         send_all_to_buyer: !!send_all_to_buyer, origin_url,
         discountAmount, discountCode: discount_code,
         slotInfo, time_slot_id,
+        finalSubtotal: Math.max(0, subtotalAmount - discountAmount), taxAmount, taxMode, taxRate, taxLabel, orderCurrency,
       });
     }
 
@@ -318,16 +346,19 @@ async function completeFreeOrder(base44, ctx) {
     buyer_email: buyer.email.toLowerCase(),
     buyer_phone: buyer.phone || '',
     total_amount: totalAmount,
-    currency: 'AUD',
+    subtotal_amount: finalSubtotal,
+    tax_amount: taxAmount,
+    tax_mode: taxMode,
+    tax_rate_percent: taxRate,
+    tax_label: taxLabel,
+    discount_amount: discountAmount,
+    currency: orderCurrency,
     payment_status: 'free',
     order_status: 'confirmed',
     order_source: 'online',
     payment_method: 'stripe',
     checkout_draft_id: draft.id,
   }), 'create order');
-
-  // Confirm order items + create tickets
-  const tickets = [];
   for (const item of orderItems) {
     // Update item to confirmed with order_id
     await withRetry(() => base44.asServiceRole.entities.OrderItem.update(item.id, {
@@ -426,7 +457,13 @@ async function initiatePaidOrder(base44, ctx) {
     buyer_email: buyer.email.toLowerCase(),
     buyer_phone: buyer.phone || '',
     total_amount: totalAmount,
-    currency: 'AUD',
+    subtotal_amount: ctx.finalSubtotal || totalAmount,
+    tax_amount: ctx.taxAmount || 0,
+    tax_mode: ctx.taxMode || 'none',
+    tax_rate_percent: ctx.taxRate || 0,
+    tax_label: ctx.taxLabel || '',
+    discount_amount: discountAmount,
+    currency: ctx.orderCurrency || 'USD',
     payment_status: 'pending',
     order_status: 'confirmed',
     order_source: 'online',
@@ -487,7 +524,7 @@ async function initiatePaidOrder(base44, ctx) {
     const tt = ttMap[ttId];
     return {
       price_data: {
-        currency: (tt.currency || 'AUD').toLowerCase(),
+        currency: (ctx.orderCurrency || tt.currency || 'USD').toLowerCase(),
         product_data: { name: `${tt.name} (${tt.attendance_mode === 'online' ? 'Online' : 'In-Person'})` },
         unit_amount: Math.round(tt.price * 100),
       },
@@ -500,7 +537,7 @@ async function initiatePaidOrder(base44, ctx) {
   if (discountAmount > 0) {
     const coupon = await stripe.coupons.create({
       amount_off: Math.round(discountAmount * 100),
-      currency: 'aud',
+      currency: (ctx.orderCurrency || 'USD').toLowerCase(),
       duration: 'once',
       name: discountCode || 'Discount',
     });
@@ -569,20 +606,25 @@ async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBu
 
 function fmtDate(d) {
   if (!d) return '';
-  return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dt = new Date(d.includes('T') ? d : d + 'T00:00:00Z');
+  return dt.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 function fmtTime(d) {
   if (!d) return '';
-  return new Date(d).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+function fmtCurrencyInline(v, cur) {
+  try { return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD' }).format(v || 0); } catch { return `${cur} ${(v || 0).toFixed(2)}`; }
 }
 
 function buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName) {
+  const cur = order.currency || 'USD';
   const rows = tickets.map(t => {
     const tt = ttMap[t.ticket_type_id];
-    const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
+    const price = tt?.price > 0 ? fmtCurrencyInline(tt.price, cur) : 'Free';
     return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
   }).join('');
-  const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
+  const total = order.total_amount > 0 ? fmtCurrencyInline(order.total_amount, cur) : 'Free';
   return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">Order #${order.order_number}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Your booking for <strong>${event.name}</strong> is confirmed.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="2" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
 }
 

@@ -58,6 +58,14 @@ Deno.serve(async (req) => {
     if (!events.length) return Response.json({ error: 'Event not found' }, { status: 404 });
     const event = events[0];
 
+    // Load workspace for currency
+    let workspace = null;
+    if (event.workspace_id) {
+      const wsList = await withRetry(() => base44.asServiceRole.entities.Workspace.filter({ id: event.workspace_id }), 'load workspace');
+      if (wsList.length) workspace = wsList[0];
+    }
+    const orderCurrency = event.currency || workspace?.default_currency || 'USD';
+
     // Load ticket types
     const allTT = await withRetry(
       () => base44.asServiceRole.entities.TicketType.filter({ event_id: event.id }),
@@ -143,7 +151,7 @@ Deno.serve(async (req) => {
       buyer_email: buyer.email.toLowerCase(),
       buyer_phone: buyer.phone || '',
       total_amount: totalAmount,
-      currency: 'AUD',
+      currency: orderCurrency,
       payment_status: paymentStatus,
       order_status: 'confirmed',
       order_source: source,
