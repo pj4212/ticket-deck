@@ -24,6 +24,7 @@ const CustomDomainSettings = React.lazy(() => import('./pages/admin/CustomDomain
 const EmbedSettings = React.lazy(() => import('./pages/admin/EmbedSettings'));
 const DiscountCodes = React.lazy(() => import('./pages/admin/DiscountCodes'));
 const WaitlistManagement = React.lazy(() => import('./pages/admin/WaitlistManagement'));
+const TimeSlotManagement = React.lazy(() => import('./pages/admin/TimeSlotManagement'));
 
 // Lazy-loaded pages
 const Home = React.lazy(() => import('./pages/Home'));
@@ -137,6 +138,7 @@ const AuthenticatedApp = () => {
             <Route path="venues" element={<VenueManagement />} />
             <Route path="discount-codes" element={<DiscountCodes />} />
             <Route path="waitlist" element={<WaitlistManagement />} />
+            <Route path="time-slots" element={<TimeSlotManagement />} />
             <Route path="settings/domains" element={<CustomDomainSettings />} />
             <Route path="settings/embed" element={<EmbedSettings />} />
           </Route>

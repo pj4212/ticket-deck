@@ -1,6 +1,6 @@
-import { ShoppingCart, Monitor, MapPin, Tag } from "lucide-react";
+import { ShoppingCart, Monitor, MapPin, Tag, Clock } from "lucide-react";
 
-export default function OrderSummary({ selections, ticketTypes, discount }) {
+export default function OrderSummary({ selections, ticketTypes, discount, slotLabel }) {
   const items = [];
   let subtotal = 0;
   let ticketCount = 0;
@@ -81,6 +81,13 @@ export default function OrderSummary({ selections, ticketTypes, discount }) {
             <span>Discount ({discount.code})</span>
           </div>
           <span className="text-emerald-400 font-medium">-${discountAmount.toFixed(2)}</span>
+        </div>
+      )}
+
+      {slotLabel && (
+        <div className="px-4 py-2 border-t border-border flex items-center gap-1.5 text-sm text-muted-foreground">
+          <Clock className="h-3.5 w-3.5 text-amber-500" />
+          <span>Time Slot: <span className="text-foreground font-medium">{slotLabel}</span></span>
         </div>
       )}
 

@@ -15,6 +15,7 @@ import OrderSummary from '@/components/booking/OrderSummary';
 import DiscountCodeInput from '@/components/booking/DiscountCodeInput';
 import WaitlistForm from '@/components/booking/WaitlistForm';
 import WaiverTerms from '@/components/booking/WaiverTerms';
+import TimeSlotPicker from '@/components/booking/TimeSlotPicker';
 import { validateCheckout } from '@/components/booking/CheckoutValidation';
 
 const BUYER_KEY = 'sp_buyer';
@@ -30,6 +31,7 @@ export default function EventPage() {
   const [venue, setVenue] = useState(null);
   const [seriesSlug, setSeriesSlug] = useState(null);
   const [ticketTypes, setTicketTypes] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
   const [customFields, setCustomFields] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,6 +54,9 @@ export default function EventPage() {
 
   // Discount
   const [appliedDiscount, setAppliedDiscount] = useState(null);
+
+  // Time slot
+  const [selectedSlotId, setSelectedSlotId] = useState(null);
 
   // Validation errors
   const [buyerErrors, setBuyerErrors] = useState({});
@@ -102,6 +107,13 @@ export default function EventPage() {
       base44.entities.TicketType.filter({ event_id: ev.id }),
     ]);
     setTicketTypes(tts.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+
+    // Load time slots for timed-entry events
+    if (ev.scheduling_mode === 'timed_entry') {
+      base44.entities.TimeSlot.filter({ event_id: ev.id, is_active: true }).then(slots =>
+        setTimeSlots(slots.sort((a, b) => a.slot_date.localeCompare(b.slot_date) || a.start_time.localeCompare(b.start_time)))
+      );
+    }
 
     if (ev.series_id) {
       base44.entities.EventSeries.filter({ id: ev.series_id }).then(s => {
@@ -216,6 +228,12 @@ export default function EventPage() {
   };
 
   const handleCheckout = async () => {
+    // Validate time slot for timed-entry events
+    if (event.scheduling_mode === 'timed_entry' && timeSlots.length > 0 && !selectedSlotId) {
+      setSubmitError('Please select a time slot');
+      return;
+    }
+
     const result = runValidation();
     if (!result.valid) {
       setSubmitError(result.firstErrorMessage);
@@ -269,6 +287,7 @@ export default function EventPage() {
       event_id: event.id,
       origin_url: window.location.origin,
       send_all_to_buyer: sendAllToBuyer,
+      time_slot_id: selectedSlotId || null,
       access_password: event.visibility_mode === 'password_protected' ? event.access_password : undefined,
       waiver_accepted: waiverAccepted || false,
       terms_accepted: termsAccepted || false,
@@ -356,6 +375,16 @@ export default function EventPage() {
 
       {!eventAvailable ? null : (
         <div className="space-y-8 mt-6">
+          {/* 0. Time Slot Selection (timed entry) */}
+          {event.scheduling_mode === 'timed_entry' && timeSlots.length > 0 && (
+            <TimeSlotPicker
+              slots={timeSlots}
+              selectedSlotId={selectedSlotId}
+              onSelect={setSelectedSlotId}
+              totalTickets={totalTickets}
+            />
+          )}
+
           {/* 1. Ticket Selection */}
           <TicketSelector
             ticketTypes={ticketTypes}
@@ -374,7 +403,17 @@ export default function EventPage() {
           />
 
           {/* 2. Live Order Summary */}
-          <OrderSummary selections={selections} ticketTypes={ticketTypes} discount={appliedDiscount} />
+          <OrderSummary
+            selections={selections}
+            ticketTypes={ticketTypes}
+            discount={appliedDiscount}
+            slotLabel={selectedSlotId ? (() => {
+              const sl = timeSlots.find(s => s.id === selectedSlotId);
+              if (!sl) return '';
+              const fmt = (t) => { const [h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; };
+              return `${sl.slot_date} · ${fmt(sl.start_time)} – ${fmt(sl.end_time)}`;
+            })() : ''}
+          />
 
           {totalTickets > 0 && (
             <>

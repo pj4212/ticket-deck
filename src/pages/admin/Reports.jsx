@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, Loader2, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Download, Loader2, RefreshCw, CheckCircle2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 function exportCsv(headers, rows, filename) {
@@ -38,6 +38,8 @@ export default function Reports() {
   const [fieldValues, setFieldValues] = useState({});
   const [discountCodes, setDiscountCodes] = useState([]);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
+  const [timeSlots, setTimeSlots] = useState([]);
+  const [slotTickets, setSlotTickets] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -79,13 +81,20 @@ export default function Reports() {
       });
       setFieldValues(fvMap);
 
-      // Load discount codes and waitlist
-      const [dcList, wlList] = await Promise.all([
+      // Load discount codes, waitlist, and time slots
+      const [dcList, wlList, tsList] = await Promise.all([
         base44.entities.DiscountCode.filter({ ...wsFilter }).catch(() => []),
         base44.entities.WaitlistEntry.filter({ ...wsFilter }).catch(() => []),
+        base44.entities.TimeSlot.filter({}).catch(() => []),
       ]);
       setDiscountCodes(dcList);
       setWaitlistEntries(wlList);
+      // Filter time slots to workspace events
+      const wsSlots = tsList.filter(s => wsEventIds.has(s.event_id));
+      setTimeSlots(wsSlots);
+      // Load tickets with slot associations for slot reporting
+      const slotTix = tix.filter(t => t.time_slot_id && t.ticket_status === 'active');
+      setSlotTickets(slotTix);
 
       setLoading(false);
     }
@@ -205,6 +214,7 @@ export default function Reports() {
           <TabsTrigger value="checkin">Check-In</TabsTrigger>
           <TabsTrigger value="discounts">Discounts</TabsTrigger>
           <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
+          <TabsTrigger value="slots">Time Slots</TabsTrigger>
           <TabsTrigger value="attendee">Attendee Export</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
         </TabsList>
@@ -461,6 +471,88 @@ export default function Reports() {
                         <TableRow key={i}><TableCell>{r.name}</TableCell><TableCell className="text-amber-400">{r.waiting}</TableCell><TableCell className="text-primary">{r.notified}</TableCell><TableCell>{r.total}</TableCell></TableRow>
                       ))}
                       {eventRows.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No waitlist entries</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="slots" className="space-y-3">
+          {(() => {
+            const fmtTime = (t) => { if (!t) return ''; const [h,m]=t.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; };
+            // Group slots by event
+            const slotsByEvent = {};
+            timeSlots.forEach(s => {
+              const eName = occMap[s.event_id]?.name || 'Unknown';
+              if (!slotsByEvent[s.event_id]) slotsByEvent[s.event_id] = { name: eName, slots: [] };
+              slotsByEvent[s.event_id].slots.push(s);
+            });
+            const totalSlots = timeSlots.length;
+            const totalCap = timeSlots.reduce((s, sl) => s + (sl.capacity || 0), 0);
+            const totalBooked = timeSlots.reduce((s, sl) => s + (sl.booked || 0), 0);
+            const busiest = timeSlots.length ? timeSlots.reduce((a, b) => ((b.booked||0)/(b.capacity||1)) > ((a.booked||0)/(a.capacity||1)) ? b : a) : null;
+            const quietest = timeSlots.filter(s => s.capacity > 0).length ? timeSlots.filter(s => s.capacity > 0).reduce((a, b) => ((b.booked||0)/(b.capacity||1)) < ((a.booked||0)/(a.capacity||1)) ? b : a) : null;
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total Slots</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalSlots}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Capacity</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalCap}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Booked</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold text-primary">{totalBooked}</p></CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Utilisation</CardTitle></CardHeader><CardContent><p className="text-2xl font-bold">{totalCap > 0 ? Math.round(totalBooked/totalCap*100) : 0}%</p></CardContent></Card>
+                </div>
+                {busiest && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="border-primary/20">
+                      <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-primary flex items-center gap-1"><Clock className="h-4 w-4" />Busiest Slot</CardTitle></CardHeader>
+                      <CardContent>
+                        <p className="font-semibold">{occMap[busiest.event_id]?.name}</p>
+                        <p className="text-sm text-muted-foreground">{busiest.slot_date} · {fmtTime(busiest.start_time)} – {fmtTime(busiest.end_time)}</p>
+                        <p className="text-sm">{busiest.booked||0} / {busiest.capacity} ({Math.round(((busiest.booked||0)/busiest.capacity)*100)}%)</p>
+                      </CardContent>
+                    </Card>
+                    {quietest && (
+                      <Card className="border-emerald-500/20">
+                        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-emerald-400 flex items-center gap-1"><Clock className="h-4 w-4" />Quietest Slot</CardTitle></CardHeader>
+                        <CardContent>
+                          <p className="font-semibold">{occMap[quietest.event_id]?.name}</p>
+                          <p className="text-sm text-muted-foreground">{quietest.slot_date} · {fmtTime(quietest.start_time)} – {fmtTime(quietest.end_time)}</p>
+                          <p className="text-sm">{quietest.booked||0} / {quietest.capacity} ({Math.round(((quietest.booked||0)/(quietest.capacity||1))*100)}%)</p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+                <div className="flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => exportCsv(
+                    ['Event', 'Date', 'Time', 'Capacity', 'Booked', 'Remaining', 'Utilisation %'],
+                    timeSlots.map(s => [occMap[s.event_id]?.name||'', s.slot_date, `${fmtTime(s.start_time)}-${fmtTime(s.end_time)}`, s.capacity, s.booked||0, Math.max(0,s.capacity-(s.booked||0)), s.capacity>0?Math.round(((s.booked||0)/s.capacity)*100):0]),
+                    'slot-report.csv'
+                  )}><Download className="h-4 w-4 mr-1" />CSV</Button>
+                </div>
+                <div className="border rounded-lg overflow-auto">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Event</TableHead><TableHead>Date</TableHead><TableHead>Time</TableHead>
+                      <TableHead>Capacity</TableHead><TableHead>Booked</TableHead><TableHead>Remaining</TableHead><TableHead>Util %</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {timeSlots.sort((a,b) => a.slot_date.localeCompare(b.slot_date) || a.start_time.localeCompare(b.start_time)).map(s => {
+                        const rem = Math.max(0, s.capacity - (s.booked||0));
+                        return (
+                          <TableRow key={s.id}>
+                            <TableCell>{occMap[s.event_id]?.name||''}</TableCell>
+                            <TableCell>{s.slot_date}</TableCell>
+                            <TableCell className="font-mono text-xs">{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</TableCell>
+                            <TableCell>{s.capacity}</TableCell>
+                            <TableCell className="font-semibold">{s.booked||0}</TableCell>
+                            <TableCell className={rem===0?'text-destructive':rem<=5?'text-amber-400':''}>{rem}</TableCell>
+                            <TableCell>{s.capacity>0?Math.round(((s.booked||0)/s.capacity)*100):0}%</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {timeSlots.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No timed-entry slots</TableCell></TableRow>}
                     </TableBody>
                   </Table>
                 </div>

@@ -37,7 +37,8 @@ export default function EventForm() {
   const [form, setForm] = useState({
     template_id: '', series_id: '', name: '', slug: '', description: '',
     event_date: '', start_datetime: '', end_datetime: '',
-    timezone: 'Australia/Brisbane', event_mode: 'in_person',
+    timezone: 'Australia/Brisbane', event_mode: 'in_person', scheduling_mode: 'standard',
+    slot_interval_mins: '', slot_default_capacity: '',
     visibility_mode: 'public_listed', access_password: '',
     recurrence_pattern: '',
     location_id: '', venue_id: '', venue_name: '', venue_link: '', parking_link: '', venue_details: '',
@@ -84,6 +85,9 @@ export default function EventForm() {
               start_datetime: ev.start_datetime ? ev.start_datetime.slice(0, 16) : '',
               end_datetime: ev.end_datetime ? ev.end_datetime.slice(0, 16) : '',
               timezone: ev.timezone || 'Australia/Brisbane', event_mode: ev.event_mode,
+              scheduling_mode: ev.scheduling_mode || 'standard',
+              slot_interval_mins: ev.slot_interval_mins || '',
+              slot_default_capacity: ev.slot_default_capacity || '',
               visibility_mode: ev.visibility_mode || 'public_listed',
               access_password: ev.access_password || '',
               recurrence_pattern: ev.recurrence_pattern || '',
@@ -110,6 +114,9 @@ export default function EventForm() {
               description: ev.description || '',
               event_date: '', start_datetime: '', end_datetime: '',
               timezone: ev.timezone || 'Australia/Brisbane', event_mode: ev.event_mode,
+              scheduling_mode: ev.scheduling_mode || 'standard',
+              slot_interval_mins: ev.slot_interval_mins || '',
+              slot_default_capacity: ev.slot_default_capacity || '',
               visibility_mode: ev.visibility_mode || 'public_listed',
               access_password: ev.access_password || '',
               recurrence_pattern: ev.recurrence_pattern || '',
@@ -197,6 +204,9 @@ export default function EventForm() {
       end_datetime: toISO(form.end_datetime),
       sales_open_at: form.sales_open_at ? toISO(form.sales_open_at) : '',
       sales_close_at: form.sales_close_at ? toISO(form.sales_close_at) : autoSalesClose,
+      scheduling_mode: form.scheduling_mode || 'standard',
+      slot_interval_mins: form.slot_interval_mins ? Number(form.slot_interval_mins) : null,
+      slot_default_capacity: form.slot_default_capacity ? Number(form.slot_default_capacity) : null,
     };
 
     let eventId;

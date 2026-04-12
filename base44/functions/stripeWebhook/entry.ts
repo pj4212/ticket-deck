@@ -177,6 +177,7 @@ async function handleCheckoutCompleted(base44, session) {
       order_item_id: item.id,
       event_id: order.event_id,
       ticket_type_id: item.ticket_type_id,
+      time_slot_id: item.time_slot_id || '',
       attendance_mode: item.attendance_mode,
       attendee_first_name: item.attendee_first_name,
       attendee_last_name: item.attendee_last_name,
@@ -212,6 +213,18 @@ async function handleCheckoutCompleted(base44, session) {
         quantity_sold: (tt.quantity_sold || 0) + count,
         quantity_reserved: Math.max(0, (tt.quantity_reserved || 0) - reservedRelease),
       }), `update sold ${ttId}`);
+    }
+  }
+
+  // Update time slot booked count for timed-entry events
+  const slotIds = [...new Set(items.filter(i => i.time_slot_id).map(i => i.time_slot_id))];
+  for (const slotId of slotIds) {
+    const slotCount = items.filter(i => i.time_slot_id === slotId).length;
+    const slotMatches = await base44.asServiceRole.entities.TimeSlot.filter({ id: slotId }).catch(() => []);
+    if (slotMatches.length) {
+      await withRetry(() => base44.asServiceRole.entities.TimeSlot.update(slotId, {
+        booked: (slotMatches[0].booked || 0) + slotCount,
+      }), `update slot booked ${slotId}`);
     }
   }
 

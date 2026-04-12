@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Monitor, MapPin, Globe } from 'lucide-react';
+import { FileText, Monitor, MapPin, Globe, Clock, Layers } from 'lucide-react';
 
 export default function EventFormStepBasic({ form, updateForm, templates, seriesList, isEdit, onApplyTemplate }) {
   return (
@@ -98,6 +98,46 @@ export default function EventFormStepBasic({ form, updateForm, templates, series
           ))}
         </div>
       </div>
+
+      {/* Scheduling Mode */}
+      <div>
+        <Label className="text-sm">Scheduling Mode</Label>
+        <p className="text-xs text-muted-foreground mb-1.5">Choose how tickets are sold for this event.</p>
+        <div className="grid grid-cols-2 gap-3 mt-1.5">
+          {[
+            { value: 'standard', label: 'Standard', icon: Layers, desc: 'Single session event', color: 'text-primary' },
+            { value: 'timed_entry', label: 'Timed Entry', icon: Clock, desc: 'Buyers pick a time slot', color: 'text-amber-500' },
+          ].map(mode => (
+            <button
+              key={mode.value}
+              type="button"
+              onClick={() => updateForm('scheduling_mode', mode.value)}
+              className={`flex flex-col items-center gap-1.5 p-4 border rounded-xl transition-all text-center ${
+                (form.scheduling_mode || 'standard') === mode.value
+                  ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
+                  : 'border-border hover:border-primary/30'
+              }`}
+            >
+              <mode.icon className={`h-6 w-6 ${mode.color}`} />
+              <span className="text-sm font-semibold">{mode.label}</span>
+              <span className="text-xs text-muted-foreground">{mode.desc}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {form.scheduling_mode === 'timed_entry' && (
+        <div className="grid grid-cols-2 gap-4 p-4 border border-amber-500/20 bg-amber-500/5 rounded-xl">
+          <div>
+            <Label className="text-xs">Default Slot Interval (mins)</Label>
+            <Input type="number" min="5" value={form.slot_interval_mins || ''} onChange={e => updateForm('slot_interval_mins', Number(e.target.value))} placeholder="30" />
+          </div>
+          <div>
+            <Label className="text-xs">Default Slot Capacity</Label>
+            <Input type="number" min="1" value={form.slot_default_capacity || ''} onChange={e => updateForm('slot_default_capacity', Number(e.target.value))} placeholder="20" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

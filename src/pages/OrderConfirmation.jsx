@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Calendar, Clock, CheckCircle2, MapPin, Monitor, Download, XCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, Calendar, Clock, CheckCircle2, MapPin, Monitor, Download, XCircle, AlertTriangle, Timer } from 'lucide-react';
 import { OrderStatusBadge, PaymentStatusBadge } from '@/components/admin/OrderStatusBadge';
 import TicketCard from '@/components/booking/TicketCard';
 import AddToCalendar from '@/components/booking/AddToCalendar';
@@ -34,14 +34,26 @@ export default function OrderConfirmation() {
           const tts = await base44.entities.TicketType.filter({ event_id: event.id });
           ttMap = Object.fromEntries(tts.map(tt => [tt.id, tt]));
         }
+        // Load time slot info
+        let slotMap = {};
+        const slotIds = [...new Set(tickets.filter(t => t.time_slot_id).map(t => t.time_slot_id))];
+        if (slotIds.length) {
+          const allSlots = await Promise.all(slotIds.map(sid => base44.entities.TimeSlot.filter({ id: sid }).catch(() => [])));
+          allSlots.flat().forEach(s => { slotMap[s.id] = s; });
+        }
         setData({
           order: { ...order, buyer_first_name: order.buyer_first_name, buyer_last_name: order.buyer_last_name },
           event,
-          tickets: tickets.filter(t => t.ticket_status === 'active').map(t => ({
-            ...t,
-            ticket_type_name: ttMap[t.ticket_type_id]?.name || 'Ticket',
-            qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(t.qr_code_hash)}`,
-          })),
+          tickets: tickets.filter(t => t.ticket_status === 'active').map(t => {
+            const slot = slotMap[t.time_slot_id];
+            const fmtSlotTime = (tm) => { if (!tm) return ''; const [h,m]=tm.split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'pm':'am'}`; };
+            return {
+              ...t,
+              ticket_type_name: ttMap[t.ticket_type_id]?.name || 'Ticket',
+              qr_code_url: `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(t.qr_code_hash)}`,
+              slot_label: slot ? `${slot.slot_date} · ${fmtSlotTime(slot.start_time)} – ${fmtSlotTime(slot.end_time)}` : '',
+            };
+          }),
         });
       }
     }

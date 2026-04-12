@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Monitor, MapPin, Download, ExternalLink } from "lucide-react";
+import { Monitor, MapPin, Download, ExternalLink, Clock } from "lucide-react";
 import { TicketStatusBadge } from "@/components/admin/OrderStatusBadge";
 
 export default function TicketCard({ ticket, event, showStatus = false }) {
@@ -35,6 +35,13 @@ export default function TicketCard({ ticket, event, showStatus = false }) {
       </div>
 
       <p className="text-sm mb-1"><span className="text-muted-foreground">Type:</span> {ticket.ticket_type_name || 'General'}</p>
+
+      {ticket.slot_label && (
+        <p className="text-sm mb-1 flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5 text-amber-500" />
+          <span className="text-muted-foreground">Time Slot:</span> {ticket.slot_label}
+        </p>
+      )}
 
       {ticket.original_ticket_id && (
         <p className="text-xs text-blue-400 mb-2">↳ Rescheduled from previous event</p>

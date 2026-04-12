@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { buyer, attendees, event_id, origin_url, send_all_to_buyer, discount_code } = body;
+    const { buyer, attendees, event_id, origin_url, send_all_to_buyer, discount_code, time_slot_id } = body;
 
     // 1. LOAD EVENT
     const events = await withRetry(() => base44.asServiceRole.entities.Event.filter({ id: event_id }), 'load event');
@@ -70,6 +70,24 @@ Deno.serve(async (req) => {
     const capacityErr = checkCapacity(attendees, ttMap);
     if (capacityErr) return Response.json({ error: capacityErr }, { status: 400 });
 
+    // 6b. TIMED ENTRY SLOT CAPACITY CHECK
+    let slotInfo = null;
+    if (event.scheduling_mode === 'timed_entry' && time_slot_id) {
+      const slotMatches = await withRetry(
+        () => base44.asServiceRole.entities.TimeSlot.filter({ id: time_slot_id }),
+        'load slot'
+      );
+      if (!slotMatches.length) return Response.json({ error: 'Time slot not found' }, { status: 404 });
+      const slot = slotMatches[0];
+      if (!slot.is_active) return Response.json({ error: 'This time slot is no longer available' }, { status: 400 });
+      if (slot.event_id !== event.id) return Response.json({ error: 'Time slot does not belong to this event' }, { status: 400 });
+      const remaining = slot.capacity - (slot.booked || 0);
+      if (attendees.length > remaining) {
+        return Response.json({ error: `Only ${remaining} spot${remaining === 1 ? '' : 's'} remaining in this time slot` }, { status: 400 });
+      }
+      slotInfo = slot;
+    }
+
     // 7. CREATE CHECKOUT DRAFT
     const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINS * 60 * 1000).toISOString();
     const draft = await withRetry(() => base44.asServiceRole.entities.CheckoutDraft.create({
@@ -92,6 +110,7 @@ Deno.serve(async (req) => {
         checkout_draft_id: draft.id,
         event_id: event.id,
         ticket_type_id: att.ticket_type_id,
+        time_slot_id: time_slot_id || '',
         attendance_mode: tt.attendance_mode,
         attendee_first_name: att.first_name,
         attendee_last_name: att.last_name,
@@ -184,7 +203,8 @@ Deno.serve(async (req) => {
       // ── FREE ORDER FLOW ──
       return await completeFreeOrder(base44, {
         draft, event, orderItems, ttMap, buyer, totalAmount, orderNumber,
-        send_all_to_buyer: !!send_all_to_buyer, inPersonCounts, origin_url
+        send_all_to_buyer: !!send_all_to_buyer, inPersonCounts, origin_url,
+        slotInfo, time_slot_id,
       });
     } else {
       // ── PAID ORDER FLOW ──
@@ -192,6 +212,7 @@ Deno.serve(async (req) => {
         draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
         send_all_to_buyer: !!send_all_to_buyer, origin_url,
         discountAmount, discountCode: discount_code,
+        slotInfo, time_slot_id,
       });
     }
 
@@ -285,7 +306,7 @@ async function checkDuplicates(base44, eventId, attendees, ttMap) {
 
 async function completeFreeOrder(base44, ctx) {
   const { draft, event, orderItems, ttMap, buyer, totalAmount, orderNumber,
-          send_all_to_buyer, inPersonCounts } = ctx;
+          send_all_to_buyer, inPersonCounts, slotInfo, time_slot_id } = ctx;
 
   // Create confirmed order
   const order = await withRetry(() => base44.asServiceRole.entities.Order.create({
@@ -318,6 +339,7 @@ async function completeFreeOrder(base44, ctx) {
       order_item_id: item.id,
       event_id: event.id,
       ticket_type_id: item.ticket_type_id,
+      time_slot_id: time_slot_id || '',
       attendance_mode: item.attendance_mode,
       attendee_first_name: item.attendee_first_name,
       attendee_last_name: item.attendee_last_name,
@@ -347,6 +369,13 @@ async function completeFreeOrder(base44, ctx) {
     }), `update sold ${ttId}`);
   }
 
+  // Update time slot booked count
+  if (slotInfo && time_slot_id) {
+    await withRetry(() => base44.asServiceRole.entities.TimeSlot.update(time_slot_id, {
+      booked: (slotInfo.booked || 0) + orderItems.length,
+    }), 'update slot booked');
+  }
+
   // Convert reservations
   const reservations = await base44.asServiceRole.entities.InventoryReservation.filter({ checkout_draft_id: draft.id });
   for (const res of reservations) {
@@ -373,7 +402,8 @@ async function completeFreeOrder(base44, ctx) {
 
 async function initiatePaidOrder(base44, ctx) {
   const { draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
-          send_all_to_buyer, origin_url, discountAmount = 0, discountCode = '' } = ctx;
+          send_all_to_buyer, origin_url, discountAmount = 0, discountCode = '',
+          slotInfo, time_slot_id } = ctx;
 
   // Create pending order (no tickets yet)
   const order = await withRetry(() => base44.asServiceRole.entities.Order.create({
