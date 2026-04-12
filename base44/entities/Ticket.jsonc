@@ -2,20 +2,20 @@
   "name": "Ticket",
   "type": "object",
   "properties": {
-    "workspace_id": {
-      "type": "string",
-      "title": "Workspace",
-      "relationType": "Workspace"
-    },
     "order_id": {
       "type": "string",
       "title": "Order",
       "relationType": "Order"
     },
-    "occurrence_id": {
+    "order_item_id": {
       "type": "string",
-      "title": "Event Occurrence",
-      "relationType": "EventOccurrence"
+      "title": "Order Item",
+      "relationType": "OrderItem"
+    },
+    "event_id": {
+      "type": "string",
+      "title": "Event",
+      "relationType": "Event"
     },
     "ticket_type_id": {
       "type": "string",
@@ -42,16 +42,6 @@
       "type": "string",
       "title": "Attendee Email",
       "format": "email"
-    },
-    "upline_mentor_id": {
-      "type": "string",
-      "title": "Upline Mentor",
-      "relationType": "UplineMentor"
-    },
-    "platinum_leader_id": {
-      "type": "string",
-      "title": "Platinum Leader",
-      "relationType": "PlatinumLeader"
     },
     "qr_code_hash": {
       "type": "string",
@@ -82,7 +72,7 @@
     "checked_in_by": {
       "type": "string",
       "title": "Checked In By",
-      "relationType": "User"
+      "relationType": "PlatformUser"
     },
     "ticket_status": {
       "type": "string",
@@ -90,14 +80,26 @@
       "enum": [
         "active",
         "cancelled",
-        "refunded"
+        "refunded",
+        "rescheduled"
       ],
       "default": "active"
+    },
+    "original_ticket_id": {
+      "type": "string",
+      "title": "Original Ticket",
+      "relationType": "Ticket"
+    },
+    "replacement_ticket_id": {
+      "type": "string",
+      "title": "Replacement Ticket",
+      "relationType": "Ticket"
     }
   },
   "required": [
     "order_id",
-    "occurrence_id",
+    "order_item_id",
+    "event_id",
     "ticket_type_id",
     "attendance_mode",
     "attendee_first_name",

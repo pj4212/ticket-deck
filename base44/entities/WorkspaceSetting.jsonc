@@ -1,5 +1,5 @@
 {
-  "name": "EventSeries",
+  "name": "WorkspaceSetting",
   "type": "object",
   "properties": {
     "workspace_id": {
@@ -7,27 +7,22 @@
       "title": "Workspace",
       "relationType": "Workspace"
     },
-    "name": {
+    "key": {
       "type": "string",
-      "title": "Series Name"
+      "title": "Setting Key"
     },
-    "slug": {
+    "value_json": {
       "type": "string",
-      "title": "Slug"
+      "title": "Value (JSON)"
     },
-    "description": {
-      "type": "string",
-      "title": "Description"
-    },
-    "is_published": {
+    "is_secret": {
       "type": "boolean",
-      "title": "Is Published",
+      "title": "Is Secret",
       "default": false
     }
   },
   "required": [
     "workspace_id",
-    "name",
-    "slug"
+    "key"
   ]
 }

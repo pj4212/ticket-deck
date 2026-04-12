@@ -7,13 +7,22 @@
       "title": "Workspace",
       "relationType": "Workspace"
     },
+    "event_id": {
+      "type": "string",
+      "title": "Event",
+      "relationType": "Event"
+    },
     "order_number": {
       "type": "string",
       "title": "Order Number"
     },
-    "buyer_name": {
+    "buyer_first_name": {
       "type": "string",
-      "title": "Buyer Name"
+      "title": "Buyer First Name"
+    },
+    "buyer_last_name": {
+      "type": "string",
+      "title": "Buyer Last Name"
     },
     "buyer_email": {
       "type": "string",
@@ -24,15 +33,15 @@
       "type": "string",
       "title": "Buyer Phone"
     },
-    "occurrence_id": {
-      "type": "string",
-      "title": "Event Occurrence",
-      "relationType": "EventOccurrence"
-    },
     "total_amount": {
       "type": "number",
       "title": "Total Amount",
       "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "default": "AUD"
     },
     "stripe_fee": {
       "type": "number",
@@ -46,7 +55,8 @@
         "completed",
         "refunded",
         "failed",
-        "free"
+        "free",
+        "partially_refunded"
       ],
       "default": "pending"
     },
@@ -60,6 +70,11 @@
       ],
       "default": "confirmed"
     },
+    "checkout_draft_id": {
+      "type": "string",
+      "title": "Checkout Draft",
+      "relationType": "CheckoutDraft"
+    },
     "stripe_checkout_session_id": {
       "type": "string",
       "title": "Stripe Checkout Session ID"
@@ -67,18 +82,15 @@
     "stripe_payment_intent_id": {
       "type": "string",
       "title": "Stripe Payment Intent ID"
-    },
-    "send_all_to_buyer": {
-      "type": "boolean",
-      "title": "Send All Tickets to Buyer",
-      "default": false
     }
   },
   "required": [
+    "workspace_id",
+    "event_id",
     "order_number",
-    "buyer_name",
+    "buyer_first_name",
+    "buyer_last_name",
     "buyer_email",
-    "occurrence_id",
     "total_amount"
   ]
 }

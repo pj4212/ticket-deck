@@ -11,10 +11,6 @@
       "type": "string",
       "title": "Name"
     },
-    "address": {
-      "type": "string",
-      "title": "Address"
-    },
     "city": {
       "type": "string",
       "title": "City"
@@ -23,13 +19,14 @@
       "type": "string",
       "title": "State"
     },
+    "country": {
+      "type": "string",
+      "title": "Country",
+      "default": "Australia"
+    },
     "timezone": {
       "type": "string",
       "title": "Timezone"
-    },
-    "default_capacity": {
-      "type": "number",
-      "title": "Default Capacity"
     },
     "is_active": {
       "type": "boolean",
@@ -38,6 +35,7 @@
     }
   },
   "required": [
+    "workspace_id",
     "name",
     "city",
     "state",

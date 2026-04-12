@@ -9,35 +9,41 @@
     },
     "name": {
       "type": "string",
-      "title": "Name"
+      "title": "Template Name"
     },
     "description": {
       "type": "string",
       "title": "Description"
     },
-    "default_location_id": {
+    "default_event_mode": {
       "type": "string",
-      "title": "Default Location",
-      "relationType": "Location"
-    },
-    "event_mode": {
-      "type": "string",
-      "title": "Event Mode",
+      "title": "Default Event Mode",
       "enum": [
         "online_stream",
         "in_person",
         "hybrid"
       ]
     },
-    "recurrence_pattern": {
+    "default_visibility_mode": {
       "type": "string",
-      "title": "Recurrence Pattern",
+      "title": "Default Visibility",
       "enum": [
-        "fortnightly_A",
-        "fortnightly_B",
-        "weekly",
-        "custom"
-      ]
+        "public_listed",
+        "unlisted",
+        "password_protected",
+        "private_invite_only"
+      ],
+      "default": "public_listed"
+    },
+    "default_location_id": {
+      "type": "string",
+      "title": "Default Location",
+      "relationType": "Location"
+    },
+    "default_venue_id": {
+      "type": "string",
+      "title": "Default Venue",
+      "relationType": "Venue"
     },
     "default_start_time": {
       "type": "string",
@@ -47,9 +53,24 @@
       "type": "number",
       "title": "Default Duration (mins)"
     },
-    "default_ticket_type_configs": {
+    "recurrence_pattern": {
       "type": "string",
-      "title": "Default Ticket Type Configs"
+      "title": "Recurrence Pattern",
+      "enum": [
+        "none",
+        "weekly",
+        "fortnightly",
+        "monthly",
+        "custom"
+      ]
+    },
+    "default_ticket_type_configs_json": {
+      "type": "string",
+      "title": "Default Ticket Types (JSON)"
+    },
+    "default_form_config_json": {
+      "type": "string",
+      "title": "Default Form Config (JSON)"
     },
     "is_active": {
       "type": "boolean",
@@ -58,8 +79,8 @@
     }
   },
   "required": [
+    "workspace_id",
     "name",
-    "event_mode",
-    "recurrence_pattern"
+    "default_event_mode"
   ]
 }

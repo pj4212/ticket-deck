@@ -1,0 +1,54 @@
+{
+  "name": "InventoryReservation",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "event_id": {
+      "type": "string",
+      "title": "Event",
+      "relationType": "Event"
+    },
+    "ticket_type_id": {
+      "type": "string",
+      "title": "Ticket Type",
+      "relationType": "TicketType"
+    },
+    "checkout_draft_id": {
+      "type": "string",
+      "title": "Checkout Draft",
+      "relationType": "CheckoutDraft"
+    },
+    "reserved_quantity": {
+      "type": "number",
+      "title": "Reserved Quantity"
+    },
+    "expires_at": {
+      "type": "string",
+      "title": "Expires At",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "active",
+        "released",
+        "converted",
+        "expired"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "event_id",
+    "ticket_type_id",
+    "checkout_draft_id",
+    "reserved_quantity",
+    "expires_at"
+  ]
+}

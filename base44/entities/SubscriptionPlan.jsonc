@@ -1,0 +1,53 @@
+{
+  "name": "SubscriptionPlan",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "title": "Plan Name"
+    },
+    "slug": {
+      "type": "string",
+      "title": "Slug"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "monthly_price": {
+      "type": "number",
+      "title": "Monthly Price",
+      "default": 0
+    },
+    "annual_price": {
+      "type": "number",
+      "title": "Annual Price",
+      "default": 0
+    },
+    "seat_limit": {
+      "type": "number",
+      "title": "Seat Limit"
+    },
+    "event_limit": {
+      "type": "number",
+      "title": "Event Limit"
+    },
+    "ticket_volume_limit": {
+      "type": "number",
+      "title": "Ticket Volume Limit"
+    },
+    "feature_flags_json": {
+      "type": "string",
+      "title": "Feature Flags (JSON)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "slug"
+  ]
+}

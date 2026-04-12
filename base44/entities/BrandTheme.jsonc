@@ -1,0 +1,42 @@
+{
+  "name": "BrandTheme",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "logo_url": {
+      "type": "string",
+      "title": "Logo URL"
+    },
+    "favicon_url": {
+      "type": "string",
+      "title": "Favicon URL"
+    },
+    "primary_color": {
+      "type": "string",
+      "title": "Primary Color"
+    },
+    "secondary_color": {
+      "type": "string",
+      "title": "Secondary Color"
+    },
+    "font_family": {
+      "type": "string",
+      "title": "Font Family"
+    },
+    "email_header_style_json": {
+      "type": "string",
+      "title": "Email Header Style (JSON)"
+    },
+    "checkout_theme_json": {
+      "type": "string",
+      "title": "Checkout Theme (JSON)"
+    }
+  },
+  "required": [
+    "workspace_id"
+  ]
+}

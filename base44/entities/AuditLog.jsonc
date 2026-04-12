@@ -1,0 +1,75 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "actor_user_id": {
+      "type": "string",
+      "title": "Actor User",
+      "relationType": "PlatformUser"
+    },
+    "actor_type": {
+      "type": "string",
+      "title": "Actor Type",
+      "enum": [
+        "platform_admin",
+        "workspace_member",
+        "system",
+        "webhook",
+        "guest"
+      ]
+    },
+    "action_type": {
+      "type": "string",
+      "title": "Action Type",
+      "enum": [
+        "create",
+        "update",
+        "delete",
+        "publish",
+        "cancel",
+        "complete",
+        "check_in",
+        "undo_check_in",
+        "refund",
+        "partial_refund",
+        "suspend",
+        "unsuspend",
+        "invite",
+        "remove_member",
+        "login",
+        "logout"
+      ]
+    },
+    "entity_type": {
+      "type": "string",
+      "title": "Entity Type"
+    },
+    "entity_id": {
+      "type": "string",
+      "title": "Entity ID"
+    },
+    "before_json": {
+      "type": "string",
+      "title": "Before State (JSON)"
+    },
+    "after_json": {
+      "type": "string",
+      "title": "After State (JSON)"
+    },
+    "metadata_json": {
+      "type": "string",
+      "title": "Metadata (JSON)"
+    }
+  },
+  "required": [
+    "actor_type",
+    "action_type",
+    "entity_type",
+    "entity_id"
+  ]
+}

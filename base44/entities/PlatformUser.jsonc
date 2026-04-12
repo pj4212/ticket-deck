@@ -1,0 +1,37 @@
+{
+  "name": "PlatformUser",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "format": "email"
+    },
+    "name": {
+      "type": "string",
+      "title": "Full Name"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "avatar_url": {
+      "type": "string",
+      "title": "Avatar URL"
+    },
+    "last_login_at": {
+      "type": "string",
+      "title": "Last Login At",
+      "format": "date-time"
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    }
+  },
+  "required": [
+    "email",
+    "name"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "WorkspaceIntegration",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "provider": {
+      "type": "string",
+      "title": "Provider",
+      "enum": [
+        "stripe",
+        "zoom",
+        "resend",
+        "custom_domain"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "not_configured",
+        "configuring",
+        "active",
+        "error",
+        "revoked"
+      ],
+      "default": "not_configured"
+    },
+    "auth_mode": {
+      "type": "string",
+      "title": "Auth Mode",
+      "enum": [
+        "api_key",
+        "oauth",
+        "webhook_only"
+      ],
+      "default": "api_key"
+    },
+    "credentials_json_encrypted": {
+      "type": "string",
+      "title": "Credentials (Encrypted JSON)"
+    },
+    "external_account_id": {
+      "type": "string",
+      "title": "External Account ID"
+    },
+    "last_checked_at": {
+      "type": "string",
+      "title": "Last Checked At",
+      "format": "date-time"
+    },
+    "health_status": {
+      "type": "string",
+      "title": "Health Status",
+      "enum": [
+        "healthy",
+        "degraded",
+        "down",
+        "unknown"
+      ],
+      "default": "unknown"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "provider",
+    "status"
+  ]
+}

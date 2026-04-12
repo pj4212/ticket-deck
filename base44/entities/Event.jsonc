@@ -1,5 +1,5 @@
 {
-  "name": "EventOccurrence",
+  "name": "Event",
   "type": "object",
   "properties": {
     "workspace_id": {
@@ -19,7 +19,7 @@
     },
     "name": {
       "type": "string",
-      "title": "Name"
+      "title": "Event Name"
     },
     "slug": {
       "type": "string",
@@ -28,6 +28,30 @@
     "description": {
       "type": "string",
       "title": "Description"
+    },
+    "visibility_mode": {
+      "type": "string",
+      "title": "Visibility Mode",
+      "enum": [
+        "public_listed",
+        "unlisted",
+        "password_protected",
+        "private_invite_only"
+      ],
+      "default": "public_listed"
+    },
+    "access_password": {
+      "type": "string",
+      "title": "Access Password"
+    },
+    "event_mode": {
+      "type": "string",
+      "title": "Event Mode",
+      "enum": [
+        "online_stream",
+        "in_person",
+        "hybrid"
+      ]
     },
     "event_date": {
       "type": "string",
@@ -48,22 +72,15 @@
       "type": "string",
       "title": "Timezone"
     },
-    "event_mode": {
-      "type": "string",
-      "title": "Event Mode",
-      "enum": [
-        "online_stream",
-        "in_person",
-        "hybrid"
-      ]
-    },
     "recurrence_pattern": {
       "type": "string",
       "title": "Recurrence Pattern",
       "enum": [
+        "none",
         "weekly",
-        "fortnightly_A",
-        "fortnightly_B"
+        "fortnightly",
+        "monthly",
+        "custom"
       ]
     },
     "location_id": {
@@ -76,17 +93,24 @@
       "title": "Venue",
       "relationType": "Venue"
     },
-    "venue_name": {
-      "type": "string",
-      "title": "Venue Name"
+    "venue_confirmed": {
+      "type": "boolean",
+      "title": "Venue Confirmed",
+      "default": false
     },
-    "venue_link": {
+    "venue_details": {
       "type": "string",
-      "title": "Venue Link"
+      "title": "Venue Details"
     },
-    "parking_link": {
+    "zoom_mode": {
       "type": "string",
-      "title": "Parking Link"
+      "title": "Zoom Mode",
+      "enum": [
+        "auto",
+        "manual",
+        "none"
+      ],
+      "default": "none"
     },
     "zoom_link": {
       "type": "string",
@@ -96,32 +120,18 @@
       "type": "string",
       "title": "Zoom Meeting ID"
     },
-    "zoom_webinar_mode": {
+    "zoom_webinar_id": {
       "type": "string",
-      "title": "Zoom Webinar Mode",
-      "enum": [
-        "auto",
-        "manual"
-      ],
-      "default": "auto"
+      "title": "Zoom Webinar ID"
     },
-    "venue_details": {
+    "sales_open_at": {
       "type": "string",
-      "title": "Venue Details"
+      "title": "Sales Open At",
+      "format": "date-time"
     },
-    "venue_confirmed": {
-      "type": "boolean",
-      "title": "Venue Confirmed",
-      "default": false
-    },
-    "is_published": {
-      "type": "boolean",
-      "title": "Is Published",
-      "default": false
-    },
-    "sales_close_date": {
+    "sales_close_at": {
       "type": "string",
-      "title": "Sales Close Date",
+      "title": "Sales Close At",
       "format": "date-time"
     },
     "status": {
@@ -130,19 +140,25 @@
       "enum": [
         "draft",
         "published",
-        "cancelled",
-        "completed"
+        "completed",
+        "cancelled"
       ],
       "default": "draft"
+    },
+    "created_by": {
+      "type": "string",
+      "title": "Created By",
+      "relationType": "PlatformUser"
     }
   },
   "required": [
+    "workspace_id",
     "name",
     "slug",
+    "event_mode",
     "event_date",
     "start_datetime",
     "end_datetime",
-    "timezone",
-    "event_mode"
+    "timezone"
   ]
 }

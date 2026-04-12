@@ -7,14 +7,14 @@
       "title": "Workspace",
       "relationType": "Workspace"
     },
-    "name": {
-      "type": "string",
-      "title": "Venue Name"
-    },
     "location_id": {
       "type": "string",
       "title": "Location",
       "relationType": "Location"
+    },
+    "name": {
+      "type": "string",
+      "title": "Venue Name"
     },
     "address": {
       "type": "string",
@@ -28,6 +28,14 @@
       "type": "string",
       "title": "Parking Link"
     },
+    "details": {
+      "type": "string",
+      "title": "Details"
+    },
+    "default_capacity": {
+      "type": "number",
+      "title": "Default Capacity"
+    },
     "is_active": {
       "type": "boolean",
       "title": "Is Active",
@@ -35,6 +43,7 @@
     }
   },
   "required": [
+    "workspace_id",
     "name"
   ]
 }

@@ -1,0 +1,39 @@
+{
+  "name": "FieldValue",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "field_definition_id": {
+      "type": "string",
+      "title": "Field Definition",
+      "relationType": "CustomFieldDefinition"
+    },
+    "owner_type": {
+      "type": "string",
+      "title": "Owner Type",
+      "enum": [
+        "order_item",
+        "order",
+        "ticket"
+      ]
+    },
+    "owner_id": {
+      "type": "string",
+      "title": "Owner ID"
+    },
+    "value_json": {
+      "type": "string",
+      "title": "Value (JSON)"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "field_definition_id",
+    "owner_type",
+    "owner_id"
+  ]
+}

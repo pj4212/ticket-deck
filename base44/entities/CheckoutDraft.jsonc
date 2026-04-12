@@ -1,0 +1,67 @@
+{
+  "name": "CheckoutDraft",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "event_id": {
+      "type": "string",
+      "title": "Event",
+      "relationType": "Event"
+    },
+    "buyer_email": {
+      "type": "string",
+      "title": "Buyer Email",
+      "format": "email"
+    },
+    "buyer_first_name": {
+      "type": "string",
+      "title": "Buyer First Name"
+    },
+    "buyer_last_name": {
+      "type": "string",
+      "title": "Buyer Last Name"
+    },
+    "buyer_phone": {
+      "type": "string",
+      "title": "Buyer Phone"
+    },
+    "send_all_to_buyer": {
+      "type": "boolean",
+      "title": "Send All Tickets to Buyer",
+      "default": false
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "draft",
+        "submitted",
+        "expired",
+        "completed",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "expires_at": {
+      "type": "string",
+      "title": "Expires At",
+      "format": "date-time"
+    },
+    "metadata_json": {
+      "type": "string",
+      "title": "Metadata (JSON)"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "event_id",
+    "buyer_email",
+    "buyer_first_name",
+    "buyer_last_name",
+    "status"
+  ]
+}

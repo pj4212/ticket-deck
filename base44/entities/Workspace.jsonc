@@ -10,61 +10,56 @@
       "type": "string",
       "title": "Slug"
     },
-    "owner_id": {
-      "type": "string",
-      "title": "Owner",
-      "relationType": "User"
-    },
     "description": {
       "type": "string",
       "title": "Description"
-    },
-    "logo_url": {
-      "type": "string",
-      "title": "Logo URL"
-    },
-    "default_timezone": {
-      "type": "string",
-      "title": "Default Timezone",
-      "default": "Australia/Brisbane"
     },
     "support_email": {
       "type": "string",
       "title": "Support Email",
       "format": "email"
     },
-    "stripe_account_id": {
+    "default_timezone": {
       "type": "string",
-      "title": "Stripe Account ID"
+      "title": "Default Timezone",
+      "default": "Australia/Brisbane"
     },
-    "stripe_secret_key": {
+    "logo_url": {
       "type": "string",
-      "title": "Stripe Secret Key"
+      "title": "Logo URL"
     },
-    "stripe_publishable_key": {
+    "primary_color": {
       "type": "string",
-      "title": "Stripe Publishable Key"
+      "title": "Primary Color"
     },
-    "stripe_webhook_secret": {
+    "secondary_color": {
       "type": "string",
-      "title": "Stripe Webhook Secret"
+      "title": "Secondary Color"
     },
-    "zoom_client_id": {
+    "sender_name": {
       "type": "string",
-      "title": "Zoom Client ID"
+      "title": "Email Sender Name"
     },
-    "zoom_client_secret": {
+    "public_visibility_mode_default": {
       "type": "string",
-      "title": "Zoom Client Secret"
-    },
-    "zoom_account_id": {
-      "type": "string",
-      "title": "Zoom Account ID"
+      "title": "Default Event Visibility",
+      "enum": [
+        "public_listed",
+        "unlisted",
+        "password_protected",
+        "private_invite_only"
+      ],
+      "default": "public_listed"
     },
     "is_active": {
       "type": "boolean",
       "title": "Is Active",
       "default": true
+    },
+    "suspended_at": {
+      "type": "string",
+      "title": "Suspended At",
+      "format": "date-time"
     }
   },
   "required": [

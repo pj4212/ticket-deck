@@ -2,20 +2,20 @@
   "name": "CheckInLog",
   "type": "object",
   "properties": {
-    "workspace_id": {
-      "type": "string",
-      "title": "Workspace",
-      "relationType": "Workspace"
-    },
     "ticket_id": {
       "type": "string",
       "title": "Ticket",
       "relationType": "Ticket"
     },
-    "occurrence_id": {
+    "event_id": {
       "type": "string",
-      "title": "Event Occurrence",
-      "relationType": "EventOccurrence"
+      "title": "Event",
+      "relationType": "Event"
+    },
+    "performed_by": {
+      "type": "string",
+      "title": "Performed By",
+      "relationType": "PlatformUser"
     },
     "action": {
       "type": "string",
@@ -25,11 +25,6 @@
         "undo_check_in"
       ]
     },
-    "performed_by": {
-      "type": "string",
-      "title": "Performed By",
-      "relationType": "User"
-    },
     "device_id": {
       "type": "string",
       "title": "Device ID"
@@ -37,8 +32,8 @@
   },
   "required": [
     "ticket_id",
-    "occurrence_id",
-    "action",
-    "performed_by"
+    "event_id",
+    "performed_by",
+    "action"
   ]
 }

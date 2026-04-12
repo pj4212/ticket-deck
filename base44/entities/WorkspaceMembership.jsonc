@@ -1,0 +1,50 @@
+{
+  "name": "WorkspaceMembership",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "user_id": {
+      "type": "string",
+      "title": "User",
+      "relationType": "PlatformUser"
+    },
+    "role": {
+      "type": "string",
+      "title": "Role",
+      "enum": [
+        "workspace_owner",
+        "workspace_admin",
+        "event_manager",
+        "scanner",
+        "finance",
+        "report_viewer",
+        "support",
+        "member"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    },
+    "invited_by": {
+      "type": "string",
+      "title": "Invited By",
+      "relationType": "PlatformUser"
+    },
+    "joined_at": {
+      "type": "string",
+      "title": "Joined At",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "user_id",
+    "role"
+  ]
+}

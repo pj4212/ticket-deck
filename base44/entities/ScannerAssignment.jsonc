@@ -10,12 +10,12 @@
     "user_id": {
       "type": "string",
       "title": "User",
-      "relationType": "User"
+      "relationType": "PlatformUser"
     },
-    "occurrence_id": {
+    "event_id": {
       "type": "string",
-      "title": "Event Occurrence",
-      "relationType": "EventOccurrence"
+      "title": "Event",
+      "relationType": "Event"
     },
     "location_id": {
       "type": "string",
@@ -34,6 +34,7 @@
     }
   },
   "required": [
+    "workspace_id",
     "user_id"
   ]
 }

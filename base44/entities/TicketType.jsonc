@@ -2,19 +2,14 @@
   "name": "TicketType",
   "type": "object",
   "properties": {
-    "workspace_id": {
+    "event_id": {
       "type": "string",
-      "title": "Workspace",
-      "relationType": "Workspace"
-    },
-    "occurrence_id": {
-      "type": "string",
-      "title": "Event Occurrence",
-      "relationType": "EventOccurrence"
+      "title": "Event",
+      "relationType": "Event"
     },
     "name": {
       "type": "string",
-      "title": "Name"
+      "title": "Ticket Type Name"
     },
     "attendance_mode": {
       "type": "string",
@@ -24,18 +19,19 @@
         "in_person"
       ]
     },
-    "ticket_category": {
+    "category_slug": {
       "type": "string",
-      "title": "Ticket Category",
-      "enum": [
-        "candidate",
-        "business_owner"
-      ]
+      "title": "Category Slug"
     },
     "price": {
       "type": "number",
       "title": "Price",
       "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "title": "Currency",
+      "default": "AUD"
     },
     "requires_payment": {
       "type": "boolean",
@@ -50,6 +46,15 @@
       "type": "number",
       "title": "Quantity Sold",
       "default": 0
+    },
+    "quantity_reserved": {
+      "type": "number",
+      "title": "Quantity Reserved",
+      "default": 0
+    },
+    "per_order_limit": {
+      "type": "number",
+      "title": "Per Order Limit"
     },
     "is_active": {
       "type": "boolean",
@@ -67,7 +72,7 @@
     }
   },
   "required": [
-    "occurrence_id",
+    "event_id",
     "name",
     "attendance_mode",
     "price"

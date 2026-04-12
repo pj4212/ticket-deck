@@ -1,0 +1,30 @@
+{
+  "name": "PlatformRoleAssignment",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "title": "User",
+      "relationType": "PlatformUser"
+    },
+    "role": {
+      "type": "string",
+      "title": "Role",
+      "enum": [
+        "platform_owner",
+        "platform_admin",
+        "platform_support",
+        "platform_readonly"
+      ]
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active",
+      "default": true
+    }
+  },
+  "required": [
+    "user_id",
+    "role"
+  ]
+}

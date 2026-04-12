@@ -1,0 +1,57 @@
+{
+  "name": "WorkspaceSubscription",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "plan_id": {
+      "type": "string",
+      "title": "Subscription Plan",
+      "relationType": "SubscriptionPlan"
+    },
+    "billing_status": {
+      "type": "string",
+      "title": "Billing Status",
+      "enum": [
+        "trialing",
+        "active",
+        "past_due",
+        "cancelled",
+        "suspended"
+      ],
+      "default": "trialing"
+    },
+    "trial_ends_at": {
+      "type": "string",
+      "title": "Trial Ends At",
+      "format": "date-time"
+    },
+    "current_period_start": {
+      "type": "string",
+      "title": "Current Period Start",
+      "format": "date-time"
+    },
+    "current_period_end": {
+      "type": "string",
+      "title": "Current Period End",
+      "format": "date-time"
+    },
+    "cancel_at_period_end": {
+      "type": "boolean",
+      "title": "Cancel At Period End",
+      "default": false
+    },
+    "stripe_customer_id": {
+      "type": "string",
+      "title": "Stripe Customer ID"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "plan_id",
+    "billing_status"
+  ]
+}
