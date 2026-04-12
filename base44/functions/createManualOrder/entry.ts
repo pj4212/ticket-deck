@@ -231,6 +231,15 @@ Deno.serve(async (req) => {
       }),
     }).catch(e => console.warn('Audit log failed:', e.message));
 
+    // Dispatch ticket.issued webhooks
+    for (const ticket of tickets) {
+      base44.asServiceRole.functions.invoke('webhookDispatch', {
+        action: 'dispatch', workspace_id: event.workspace_id,
+        event_type: 'ticket.issued',
+        payload: { ticket_id: ticket.id, order_id: order.id, event_id: event.id, attendee_email: ticket.attendee_email, attendee_name: `${ticket.attendee_first_name} ${ticket.attendee_last_name}`, source },
+      }).catch(() => {});
+    }
+
     // Send confirmation emails (non-blocking) — skip for complimentary unless explicitly wanted
     if (body.send_confirmation !== false) {
       base44.asServiceRole.functions.invoke('sendWorkspaceEmail', {

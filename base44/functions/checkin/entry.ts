@@ -100,6 +100,20 @@ Deno.serve(async (req) => {
 
       const updatedTicket = { ...ticket, check_in_status: 'checked_in', checked_in_at: now };
 
+      // Dispatch webhook: ticket.checked_in
+      base44.asServiceRole.functions.invoke('webhookDispatch', {
+        action: 'dispatch',
+        workspace_id: ticket.event_id ? (await base44.asServiceRole.entities.Event.filter({ id: ticket.event_id }).then(e => e[0]?.workspace_id).catch(() => '')) : '',
+        event_type: 'ticket.checked_in',
+        payload: {
+          ticket_id: ticket.id,
+          event_id: ticket.event_id,
+          attendee_email: ticket.attendee_email,
+          attendee_name: `${ticket.attendee_first_name} ${ticket.attendee_last_name}`,
+          checked_in_at: now,
+        },
+      }).catch(() => {});
+
       if (warnings.length > 0) {
         return Response.json({ status: 'warning_checked_in', reason: warnings.join(' | '), ticket: updatedTicket });
       }

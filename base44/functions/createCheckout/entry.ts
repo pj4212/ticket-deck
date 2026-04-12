@@ -390,6 +390,15 @@ async function completeFreeOrder(base44, ctx) {
   // Generate manage token
   const manageToken = await generateManageToken(order.id);
 
+  // Dispatch ticket.issued webhooks
+  for (const ticket of tickets) {
+    base44.asServiceRole.functions.invoke('webhookDispatch', {
+      action: 'dispatch', workspace_id: event.workspace_id,
+      event_type: 'ticket.issued',
+      payload: { ticket_id: ticket.id, order_id: order.id, event_id: event.id, attendee_email: ticket.attendee_email, attendee_name: `${ticket.attendee_first_name} ${ticket.attendee_last_name}` },
+    }).catch(() => {});
+  }
+
   // Send emails (non-blocking)
   sendOrderEmails(base44, order, event, tickets, ttMap, send_all_to_buyer).catch(e => console.error('Email error:', e.message));
 

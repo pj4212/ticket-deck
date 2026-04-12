@@ -152,6 +152,11 @@ Deno.serve(async (req) => {
         for (const t of tickets) {
           if (t.ticket_status === 'active') {
             await base44.asServiceRole.entities.Ticket.update(t.id, { ticket_status: 'cancelled' });
+            base44.asServiceRole.functions.invoke('webhookDispatch', {
+              action: 'dispatch', workspace_id: order.workspace_id,
+              event_type: 'ticket.cancelled',
+              payload: { ticket_id: t.id, order_id: order.id, event_id: order.event_id, attendee_email: t.attendee_email },
+            }).catch(() => {});
           }
         }
         await base44.asServiceRole.entities.Order.update(order.id, { order_status: 'cancelled' });
@@ -170,6 +175,11 @@ Deno.serve(async (req) => {
         for (const t of tickets) {
           if (t.ticket_status === 'active') {
             await base44.asServiceRole.entities.Ticket.update(t.id, { ticket_status: 'refunded' });
+            base44.asServiceRole.functions.invoke('webhookDispatch', {
+              action: 'dispatch', workspace_id: order.workspace_id,
+              event_type: 'ticket.refunded',
+              payload: { ticket_id: t.id, order_id: order.id, event_id: order.event_id, attendee_email: t.attendee_email },
+            }).catch(() => {});
           }
         }
         await base44.asServiceRole.entities.Order.update(order.id, {
@@ -183,6 +193,11 @@ Deno.serve(async (req) => {
       if (action === 'cancel_ticket') {
         const { ticket_id } = body;
         await base44.asServiceRole.entities.Ticket.update(ticket_id, { ticket_status: 'cancelled' });
+        base44.asServiceRole.functions.invoke('webhookDispatch', {
+          action: 'dispatch', workspace_id: order.workspace_id,
+          event_type: 'ticket.cancelled',
+          payload: { ticket_id, order_id: order.id, event_id: order.event_id },
+        }).catch(() => {});
         return Response.json({ success: true });
       }
 

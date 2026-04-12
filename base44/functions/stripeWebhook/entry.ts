@@ -233,6 +233,15 @@ async function handleCheckoutCompleted(base44, session) {
     await withRetry(() => base44.asServiceRole.entities.CheckoutDraft.update(draftId, { status: 'completed' }), 'complete draft');
   }
 
+  // Dispatch ticket.issued webhooks
+  for (const ticket of tickets) {
+    base44.asServiceRole.functions.invoke('webhookDispatch', {
+      action: 'dispatch', workspace_id: order.workspace_id,
+      event_type: 'ticket.issued',
+      payload: { ticket_id: ticket.id, order_id: order.id, event_id: order.event_id, attendee_email: ticket.attendee_email, attendee_name: `${ticket.attendee_first_name} ${ticket.attendee_last_name}` },
+    }).catch(() => {});
+  }
+
   // Send emails
   if (event) {
     sendOrderEmails(base44, order, event, tickets, ttMap, order.send_all_to_buyer).catch(e => console.error('Email error:', e.message));

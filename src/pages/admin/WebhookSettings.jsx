@@ -7,16 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, Plus, Edit, Trash2, Webhook, CheckCircle2, XCircle, Copy } from 'lucide-react';
+import { Loader2, Plus, Edit, Trash2, Webhook, CheckCircle2, XCircle, Copy, Send, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import WebhookDeliveryLogs from '@/components/admin/WebhookDeliveryLogs';
 
 const EVENT_TYPES = [
   { value: '*', label: 'All events' },
   { value: 'order.created', label: 'Order created' },
-  { value: 'order.completed', label: 'Order completed' },
+  { value: 'order.completed', label: 'Order completed (paid)' },
   { value: 'order.refunded', label: 'Order refunded' },
-  { value: 'ticket.checked_in', label: 'Ticket checked in' },
+  { value: 'ticket.issued', label: 'Ticket issued' },
+  { value: 'ticket.checked_in', label: 'Attendee checked in' },
   { value: 'ticket.cancelled', label: 'Ticket cancelled' },
+  { value: 'ticket.refunded', label: 'Ticket refunded' },
   { value: 'event.published', label: 'Event published' },
   { value: 'event.cancelled', label: 'Event cancelled' },
   { value: 'event.updated', label: 'Event updated' },
@@ -29,6 +32,9 @@ export default function WebhookSettings() {
   const [editEp, setEditEp] = useState(null);
   const [saving, setSaving] = useState(false);
   const [selectedEvents, setSelectedEvents] = useState([]);
+  const [testingId, setTestingId] = useState(null);
+  const [showLogsForEp, setShowLogsForEp] = useState(null);
+  const [showAllLogs, setShowAllLogs] = useState(false);
 
   useEffect(() => { load(); }, [workspaceId]);
 
@@ -85,8 +91,19 @@ export default function WebhookSettings() {
           <h1 className="text-2xl font-bold">Webhook Endpoints</h1>
           <p className="text-sm text-muted-foreground">Receive real-time notifications when events occur in your workspace.</p>
         </div>
-        <Button size="sm" onClick={() => openEdit(null)}><Plus className="h-4 w-4 mr-1.5" />Add Endpoint</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowAllLogs(!showAllLogs)}>
+            <FileText className="h-4 w-4 mr-1.5" />{showAllLogs ? 'Hide' : 'Show'} Logs
+          </Button>
+          <Button size="sm" onClick={() => openEdit(null)}><Plus className="h-4 w-4 mr-1.5" />Add Endpoint</Button>
+        </div>
       </div>
+
+      {showAllLogs && (
+        <div className="border rounded-xl p-4 bg-card">
+          <WebhookDeliveryLogs workspaceId={workspaceId} />
+        </div>
+      )}
 
       {endpoints.length === 0 && (
         <div className="text-center py-12">
@@ -122,10 +139,27 @@ export default function WebhookSettings() {
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  <Button variant="ghost" size="icon" title="Test" onClick={async () => {
+                    setTestingId(ep.id);
+                    const res = await base44.functions.invoke('webhookDispatch', { action: 'test_endpoint', endpoint_id: ep.id, workspace_id: workspaceId });
+                    if (res.data.status === 'success') toast.success('Test ping delivered');
+                    else toast.error('Test ping failed');
+                    setTestingId(null); load();
+                  }}>
+                    {testingId === ep.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" title="Logs" onClick={() => setShowLogsForEp(showLogsForEp === ep.id ? null : ep.id)}>
+                    <FileText className="h-4 w-4" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit({ ...ep })}><Edit className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon" onClick={() => handleDelete(ep)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                 </div>
               </div>
+              {showLogsForEp === ep.id && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <WebhookDeliveryLogs endpointId={ep.id} workspaceId={workspaceId} />
+                </div>
+              )}
             </div>
           );
         })}

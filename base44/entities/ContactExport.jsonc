@@ -1,0 +1,83 @@
+{
+  "name": "ContactExport",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "email": {
+      "type": "string",
+      "title": "Email",
+      "format": "email"
+    },
+    "first_name": {
+      "type": "string",
+      "title": "First Name"
+    },
+    "last_name": {
+      "type": "string",
+      "title": "Last Name"
+    },
+    "phone": {
+      "type": "string",
+      "title": "Phone"
+    },
+    "contact_type": {
+      "type": "string",
+      "title": "Contact Type",
+      "enum": [
+        "buyer",
+        "attendee"
+      ],
+      "default": "buyer"
+    },
+    "source_event_id": {
+      "type": "string",
+      "title": "Source Event",
+      "relationType": "Event"
+    },
+    "source_order_id": {
+      "type": "string",
+      "title": "Source Order",
+      "relationType": "Order"
+    },
+    "marketing_opt_in": {
+      "type": "boolean",
+      "title": "Marketing Opt-In",
+      "default": false
+    },
+    "tags_json": {
+      "type": "string",
+      "title": "Tags (JSON)"
+    },
+    "last_synced_at": {
+      "type": "string",
+      "title": "Last Synced At",
+      "format": "date-time"
+    },
+    "sync_destination": {
+      "type": "string",
+      "title": "Sync Destination"
+    },
+    "sync_status": {
+      "type": "string",
+      "title": "Sync Status",
+      "enum": [
+        "pending",
+        "synced",
+        "failed",
+        "not_configured"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "email",
+    "first_name",
+    "last_name",
+    "contact_type"
+  ]
+}

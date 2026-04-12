@@ -1,0 +1,81 @@
+{
+  "name": "WebhookDeliveryLog",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "endpoint_id": {
+      "type": "string",
+      "title": "Webhook Endpoint",
+      "relationType": "WebhookEndpoint"
+    },
+    "event_type": {
+      "type": "string",
+      "title": "Event Type"
+    },
+    "event_id_ref": {
+      "type": "string",
+      "title": "Event ID Reference"
+    },
+    "url": {
+      "type": "string",
+      "title": "URL"
+    },
+    "request_body_json": {
+      "type": "string",
+      "title": "Request Body (JSON)"
+    },
+    "response_status": {
+      "type": "number",
+      "title": "Response Status"
+    },
+    "response_body": {
+      "type": "string",
+      "title": "Response Body"
+    },
+    "delivery_status": {
+      "type": "string",
+      "title": "Delivery Status",
+      "enum": [
+        "success",
+        "failed",
+        "retrying",
+        "pending"
+      ],
+      "default": "pending"
+    },
+    "attempt_number": {
+      "type": "number",
+      "title": "Attempt Number",
+      "default": 1
+    },
+    "max_attempts": {
+      "type": "number",
+      "title": "Max Attempts",
+      "default": 3
+    },
+    "error_message": {
+      "type": "string",
+      "title": "Error Message"
+    },
+    "duration_ms": {
+      "type": "number",
+      "title": "Duration (ms)"
+    },
+    "next_retry_at": {
+      "type": "string",
+      "title": "Next Retry At",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "workspace_id",
+    "endpoint_id",
+    "event_type",
+    "url",
+    "delivery_status"
+  ]
+}

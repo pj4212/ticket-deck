@@ -189,37 +189,84 @@ Deno.serve(async (req) => {
     if (action === 'incomplete_event_check') {
       const now = new Date();
       const sevenDaysOut = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+      const threeDaysOut = new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10);
       const todayStr = now.toISOString().slice(0, 10);
 
-      const events = await base44.asServiceRole.entities.Event.filter({ status: 'draft' });
-      const upcoming = events.filter(e => e.event_date >= todayStr && e.event_date <= sevenDaysOut);
+      // Check both draft and published events for issues
+      const allEvents = await base44.asServiceRole.entities.Event.filter({});
+      const upcoming = allEvents.filter(e => e.event_date >= todayStr && e.event_date <= sevenDaysOut);
 
       const issues = [];
       for (const event of upcoming) {
         const warnings = [];
+        const severity = event.event_date <= threeDaysOut ? 'high' : 'medium';
+
+        // Missing Zoom link for online/hybrid events
         if (['online_stream', 'hybrid'].includes(event.event_mode) && !event.zoom_link) {
-          warnings.push('Missing Zoom link');
+          warnings.push('Missing online meeting link');
         }
-        if (['in_person', 'hybrid'].includes(event.event_mode) && !event.venue_id && !event.venue_details) {
-          warnings.push('No venue assigned');
+
+        // Venue not confirmed for in-person/hybrid events close to date
+        if (['in_person', 'hybrid'].includes(event.event_mode)) {
+          if (!event.venue_id && !event.venue_details) {
+            warnings.push('No venue assigned');
+          } else if (event.venue_confirmed === false && event.event_date <= threeDaysOut) {
+            warnings.push('Venue not confirmed (event within 3 days)');
+          }
         }
+
+        // No ticket types
         const tts = await base44.asServiceRole.entities.TicketType.filter({ event_id: event.id, is_active: true });
-        if (!tts.length) warnings.push('No ticket types');
+        if (!tts.length) warnings.push('No ticket types configured');
+
+        // Still in draft and event is within 3 days
+        if (event.status === 'draft' && event.event_date <= threeDaysOut) {
+          warnings.push('Event still in draft status');
+        }
+
         if (warnings.length) {
-          issues.push({ event_id: event.id, event_name: event.name, event_date: event.event_date, warnings });
+          issues.push({
+            event_id: event.id, event_name: event.name, event_date: event.event_date,
+            workspace_id: event.workspace_id, warnings, severity,
+          });
         }
       }
 
-      // Create platform alerts for critical issues
+      // Create platform alerts
       for (const issue of issues) {
+        // Check if alert already exists (prevent duplicates)
+        const existing = await base44.asServiceRole.entities.PlatformAlert.filter({
+          entity_id: issue.event_id, alert_type: 'capacity_warning', status: 'open',
+        }).catch(() => []);
+        if (existing.length) continue;
+
         await base44.asServiceRole.entities.PlatformAlert.create({
           workspace_id: issue.workspace_id || '',
-          alert_type: 'suspicious_activity', // Reusing as "organiser_alert" category
-          severity: 'medium',
-          title: `Incomplete event: ${issue.event_name}`,
-          description: `Event on ${issue.event_date} has issues: ${issue.warnings.join(', ')}`,
+          alert_type: 'capacity_warning',
+          severity: issue.severity,
+          title: `${issue.severity === 'high' ? '⚠️ ' : ''}Incomplete event: ${issue.event_name}`,
+          description: `Event on ${issue.event_date} has ${issue.warnings.length} issue(s): ${issue.warnings.join(', ')}`,
+          metadata_json: JSON.stringify({ event_id: issue.event_id, warnings: issue.warnings }),
           status: 'open',
-        }).catch(() => {});
+        }).catch(e => console.warn('Alert create failed:', e.message));
+
+        // Send email alert to workspace admin for high severity
+        if (issue.severity === 'high' && issue.workspace_id) {
+          const memberships = await base44.asServiceRole.entities.WorkspaceMembership.filter({
+            workspace_id: issue.workspace_id, role: 'super_admin',
+          }).catch(() => []);
+          for (const m of memberships.slice(0, 3)) {
+            const users = await base44.asServiceRole.entities.PlatformUser.filter({ id: m.user_id }).catch(() => []);
+            if (users.length && users[0].email) {
+              await base44.asServiceRole.integrations.Core.SendEmail({
+                to: users[0].email,
+                subject: `⚠️ Event Alert: ${issue.event_name} (${issue.event_date})`,
+                body: `<div style="font-family:sans-serif;max-width:600px;margin:auto"><h2>Event Alert</h2><p><strong>${issue.event_name}</strong> on ${issue.event_date} has the following issues:</p><ul>${issue.warnings.map(w => `<li>${w}</li>`).join('')}</ul><p>Please review and resolve before the event date.</p></div>`,
+                from_name: 'Ticket Deck Alerts',
+              }).catch(e => console.warn('Alert email failed:', e.message));
+            }
+          }
+        }
       }
 
       return Response.json({ status: 'success', incomplete_events: issues });
