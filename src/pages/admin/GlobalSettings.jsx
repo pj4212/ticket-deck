@@ -10,18 +10,23 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Globe, Receipt, CreditCard, Scale, MapPin } from 'lucide-react';
 
 export default function GlobalSettings() {
-  const { activeWorkspace, workspaceId } = useWorkspace();
+  const { activeWorkspace, workspaceId, loading: wsLoading } = useWorkspace();
   const [workspace, setWorkspace] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!workspaceId) return;
+    if (wsLoading) return;
+    if (!workspaceId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     base44.entities.Workspace.filter({ id: workspaceId }).then(ws => {
       setWorkspace(ws[0] || null);
       setLoading(false);
     });
-  }, [workspaceId]);
+  }, [workspaceId, wsLoading]);
 
   const handleSave = async (updates) => {
     if (!workspace) return;
@@ -31,7 +36,7 @@ export default function GlobalSettings() {
     setSaving(false);
   };
 
-  if (loading) {
+  if (loading || wsLoading) {
     return (
       <div className="flex items-center justify-center p-12">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
