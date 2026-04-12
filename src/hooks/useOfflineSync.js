@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { enqueue, getAll, remove, count as queueCount } from '@/lib/offlineCheckinQueue';
 
-export default function useOfflineSync(occurrenceId, onSyncResult) {
+export default function useOfflineSync(eventId, onSyncResult) {
   const [online, setOnline] = useState(navigator.onLine);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -42,7 +42,7 @@ export default function useOfflineSync(occurrenceId, onSyncResult) {
         const res = await base44.functions.invoke('checkin', {
           action: 'checkin',
           ticket_id: item.ticket_id,
-          occurrence_id: item.occurrence_id,
+          event_id: item.event_id || item.occurrence_id,
           qr_hash: item.qr_hash
         });
         await remove(item.id);

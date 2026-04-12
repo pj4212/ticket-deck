@@ -19,10 +19,12 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, ticket_id, event_id, qr_hash } = body;
+    const { action, ticket_id, qr_hash } = body;
+    // Support both event_id and legacy occurrence_id
+    const eventId = body.event_id || body.occurrence_id;
 
     if (action === 'checkin') {
-      // Lookup ticket by qr_hash or ticket_id
+      // Lookup ticket
       let ticket;
       if (qr_hash) {
         const tickets = await base44.asServiceRole.entities.Ticket.filter({ qr_code_hash: qr_hash });
@@ -36,19 +38,19 @@ Deno.serve(async (req) => {
         return Response.json({ status: 'error', reason: 'No ticket identifier provided' });
       }
 
-      // Validate QR hash if both provided
+      // Validate QR hash match
       if (ticket_id && qr_hash && ticket.qr_code_hash !== qr_hash) {
         return Response.json({ status: 'error', reason: 'Invalid ticket' });
       }
 
-      // Check event match and date
+      // Event match check
       let crossEventWarning = null;
-      if (event_id && ticket.event_id !== event_id) {
+      if (eventId && ticket.event_id !== eventId) {
         let ticketEvent = null;
         try {
           const evts = await base44.asServiceRole.entities.Event.filter({ id: ticket.event_id });
           if (evts.length) ticketEvent = evts[0];
-        } catch (e) { /* ignore */ }
+        } catch (_) {}
 
         const today = new Date().toISOString().slice(0, 10);
         const ticketDate = ticketEvent?.event_date || '';
@@ -56,7 +58,7 @@ Deno.serve(async (req) => {
         if (ticketDate !== today) {
           return Response.json({
             status: 'error',
-            reason: `Wrong date — ticket is for ${ticketEvent?.name || 'unknown event'} on ${ticketDate || 'unknown date'}`,
+            reason: `Wrong event — ticket is for "${ticketEvent?.name || 'unknown'}" on ${ticketDate || 'unknown'}`,
             ticket
           });
         }
@@ -64,18 +66,18 @@ Deno.serve(async (req) => {
       }
 
       // Status checks
-      if (ticket.ticket_status === 'cancelled') return Response.json({ status: 'error', reason: 'Ticket cancelled' });
-      if (ticket.ticket_status === 'refunded') return Response.json({ status: 'error', reason: 'Ticket refunded' });
+      if (ticket.ticket_status === 'cancelled') return Response.json({ status: 'error', reason: 'Ticket cancelled', ticket });
+      if (ticket.ticket_status === 'refunded') return Response.json({ status: 'error', reason: 'Ticket refunded', ticket });
 
       if (ticket.check_in_status === 'checked_in') {
         return Response.json({
           status: 'warning',
-          reason: `Already checked in at ${ticket.checked_in_at || 'unknown time'}`,
+          reason: `Already checked in${ticket.checked_in_at ? ` at ${new Date(ticket.checked_in_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}` : ''}`,
           ticket
         });
       }
 
-      // Perform check-in
+      // Atomic check-in
       const now = new Date().toISOString();
       await withRetry(() => base44.asServiceRole.entities.Ticket.update(ticket.id, {
         check_in_status: 'checked_in',
@@ -83,41 +85,26 @@ Deno.serve(async (req) => {
         checked_in_by: user.id,
       }), `checkin ${ticket.id}`);
 
-      // Append-only check-in log
+      // Append-only CheckInLog
       await withRetry(() => base44.asServiceRole.entities.CheckInLog.create({
         ticket_id: ticket.id,
         event_id: ticket.event_id,
         action: 'check_in',
         performed_by: user.id,
-      }), `log checkin ${ticket.id}`);
+      }), `log ${ticket.id}`);
 
-      // Audit log
-      await base44.asServiceRole.entities.AuditLog.create({
-        workspace_id: null,
-        actor_user_id: user.id,
-        actor_type: 'workspace_member',
-        action_type: 'check_in',
-        entity_type: 'Ticket',
-        entity_id: ticket.id,
-        metadata_json: JSON.stringify({ event_id: ticket.event_id }),
-      }).catch(() => {});
-
+      // Build warnings
       const warnings = [];
       if (crossEventWarning) warnings.push(`Different event: ${crossEventWarning}`);
       if (ticket.attendance_mode === 'online') warnings.push('Online ticket — not for in-person entry');
 
+      const updatedTicket = { ...ticket, check_in_status: 'checked_in', checked_in_at: now };
+
       if (warnings.length > 0) {
-        return Response.json({
-          status: 'warning_checked_in',
-          reason: warnings.join(' | '),
-          ticket: { ...ticket, check_in_status: 'checked_in', checked_in_at: now }
-        });
+        return Response.json({ status: 'warning_checked_in', reason: warnings.join(' | '), ticket: updatedTicket });
       }
 
-      return Response.json({
-        status: 'success',
-        ticket: { ...ticket, check_in_status: 'checked_in', checked_in_at: now }
-      });
+      return Response.json({ status: 'success', ticket: updatedTicket });
     }
 
     if (action === 'undo_checkin') {
@@ -130,16 +117,12 @@ Deno.serve(async (req) => {
       }
 
       await withRetry(() => base44.asServiceRole.entities.Ticket.update(ticket.id, {
-        check_in_status: 'not_checked_in',
-        checked_in_at: '',
-        checked_in_by: '',
+        check_in_status: 'not_checked_in', checked_in_at: '', checked_in_by: '',
       }), `undo ${ticket.id}`);
 
       await withRetry(() => base44.asServiceRole.entities.CheckInLog.create({
-        ticket_id: ticket.id,
-        event_id: ticket.event_id,
-        action: 'undo_check_in',
-        performed_by: user.id,
+        ticket_id: ticket.id, event_id: ticket.event_id,
+        action: 'undo_check_in', performed_by: user.id,
       }), `log undo ${ticket.id}`);
 
       return Response.json({
@@ -149,16 +132,15 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'poll') {
+      // Minimal payload polling — only return check-in status
       const tickets = await base44.asServiceRole.entities.Ticket.filter({
-        event_id: body.event_id || body.occurrence_id,
+        event_id: eventId,
         ticket_status: 'active',
       });
-      const slim = tickets.map(t => ({
-        id: t.id,
-        check_in_status: t.check_in_status,
-        checked_in_at: t.checked_in_at || '',
-      }));
-      return Response.json({ status: 'success', tickets: slim });
+      return Response.json({
+        status: 'success',
+        tickets: tickets.map(t => ({ id: t.id, check_in_status: t.check_in_status, checked_in_at: t.checked_in_at || '' })),
+      });
     }
 
     return Response.json({ error: 'Invalid action' }, { status: 400 });
