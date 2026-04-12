@@ -1,74 +1,104 @@
 import { Check, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 
-const TIERS = [
-  { name: 'Starter', range: '≤ 50 tickets/mo', fee: 'FREE', note: '$0 platform fee', highlight: false },
-  { name: 'Growth', range: '51–200 tickets/mo', fee: '1.2%', note: 'per ticket', highlight: false },
-  { name: 'Pro', range: '201–500 tickets/mo', fee: '0.9%', note: 'per ticket', highlight: true, badge: 'Most Popular' },
-  { name: 'Scale', range: '501+ tickets/mo', fee: '0.6%', note: 'per ticket', highlight: false },
-];
-
-const INCLUDED = [
-  'All features included',
-  'No monthly subscription',
-  'No flat per-ticket fees',
-  'Free events always free',
-  'Cancel anytime',
+const PLANS = [
+  {
+    name: 'Free Events',
+    price: '$0',
+    subtitle: 'Always free. No catches.',
+    highlight: false,
+    features: [
+      'Unlimited free events',
+      'All features included',
+      'No credit card needed',
+    ],
+    cta: 'Start Free',
+  },
+  {
+    name: 'Paid Events',
+    price: '1%',
+    subtitle: 'Per ticket, capped at $1',
+    highlight: true,
+    badge: 'Most Popular',
+    features: [
+      'Stripe processing + 1%',
+      'Fee never exceeds $1',
+      'No subscriptions ever',
+    ],
+    cta: 'Get Started',
+  },
+  {
+    name: 'Enterprise',
+    price: 'Custom',
+    subtitle: 'For large-scale organisers',
+    highlight: false,
+    features: [
+      'Custom fee arrangements',
+      'Dedicated support & SLA',
+      'Volume discounts',
+    ],
+    cta: 'Contact Us',
+  },
 ];
 
 export default function PricingPreviewSection() {
   return (
     <section className="py-20 sm:py-28 px-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="text-center mb-16">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Pricing</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Simple, volume-based pricing
+            Brutally simple pricing
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            No subscriptions. No flat per-ticket fees. The more you sell, the less you pay. Free events are always free.
+            Free events cost nothing. Paid tickets: Stripe + 1%, capped at $1. That's it.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TIERS.map((t) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {PLANS.map((plan) => (
             <div
-              key={t.name}
+              key={plan.name}
               className={`relative rounded-2xl border p-6 flex flex-col text-center ${
-                t.highlight
+                plan.highlight
                   ? 'border-primary bg-primary/5 ring-1 ring-primary/20 shadow-lg shadow-primary/10'
                   : 'border-border bg-card'
               }`}
             >
-              {t.badge && (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs">
-                  {t.badge}
-                </Badge>
+              {plan.badge && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full">
+                  {plan.badge}
+                </span>
               )}
-              <h3 className="text-lg font-semibold text-foreground">{t.name}</h3>
-              <p className="text-sm text-muted-foreground mt-1">{t.range}</p>
-              <div className="mt-5 mb-2">
-                <span className="text-4xl font-bold text-foreground">{t.fee}</span>
+              <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+              <div className="mt-4 mb-1">
+                <span className="text-4xl font-bold text-foreground">{plan.price}</span>
+                {plan.price === '1%' && <span className="text-muted-foreground ml-1 text-sm">max $1</span>}
               </div>
-              <p className="text-sm text-muted-foreground">{t.note}</p>
+              <p className="text-sm text-muted-foreground">{plan.subtitle}</p>
 
-              <ul className="mt-6 space-y-2 text-left flex-1">
-                {INCLUDED.map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+              <ul className="mt-6 space-y-2.5 text-left flex-1">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    {item}
+                    {f}
                   </li>
                 ))}
               </ul>
 
               <Button
                 className="mt-6 w-full"
-                variant={t.highlight ? 'default' : 'outline'}
-                onClick={() => window.location.href = '/admin'}
+                variant={plan.highlight ? 'default' : 'outline'}
+                onClick={() => {
+                  if (plan.name === 'Enterprise') {
+                    window.location.href = 'mailto:hello@ticketdeck.io?subject=Enterprise%20Inquiry';
+                  } else {
+                    window.location.href = '/admin';
+                  }
+                }}
               >
-                {t.fee === 'FREE' ? 'Start Free' : 'Get Started'}
+                {plan.cta}
               </Button>
             </div>
           ))}

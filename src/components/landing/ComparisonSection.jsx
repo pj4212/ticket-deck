@@ -2,22 +2,13 @@ import { Check, X } from 'lucide-react';
 
 const COMPETITORS = [
   {
-    name: 'Ticket Deck (Starter)',
+    name: 'Ticket Deck',
     subscription: 'None',
-    perTicket: 'FREE',
+    perTicket: '1% (max $1)',
     processingFee: '~1.75% + $0.30',
-    total50: '$1.18',
-    pctOf50: '2.35%',
+    total50: '$1.68',
+    pctOf50: '3.35%',
     best: true,
-  },
-  {
-    name: 'Ticket Deck (Pro)',
-    subscription: 'None',
-    perTicket: '0.9%',
-    processingFee: '~1.75% + $0.30',
-    total50: '$1.63',
-    pctOf50: '3.25%',
-    best: false,
   },
   {
     name: 'Ticket Tailor',
@@ -50,7 +41,7 @@ const COMPETITORS = [
 
 const FEATURE_COMP = [
   { feature: 'No monthly subscription', td: true, tt: false, eb: true, hu: true },
-  { feature: 'Free tier (≤50 tickets)', td: true, tt: false, eb: false, hu: false },
+  { feature: 'Fee capped at $1/ticket', td: true, tt: false, eb: false, hu: false },
   { feature: 'Free events at $0', td: true, tt: true, eb: true, hu: true },
   { feature: 'Multi-currency support', td: true, tt: true, eb: true, hu: false },
   { feature: 'Custom branding & domain', td: true, tt: true, eb: false, hu: false },
