@@ -2,7 +2,7 @@ import { Check, X, Minus } from 'lucide-react';
 
 const COMPETITORS = [
   {
-    name: 'Ticket Deck (Starter)',
+    name: 'Ticket Space (Starter)',
     subscription: 'None',
     perTicket: 'FREE',
     stripeFee: '$1.18',
@@ -11,7 +11,7 @@ const COMPETITORS = [
     best: true,
   },
   {
-    name: 'Ticket Deck (Pro)',
+    name: 'Ticket Space (Pro)',
     subscription: 'None',
     perTicket: '0.9%',
     stripeFee: '$1.18',
@@ -126,7 +126,7 @@ export default function ComparisonSection() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Feature</th>
-                  <th className="text-center py-3 px-4 text-primary font-semibold">Ticket Deck</th>
+                  <th className="text-center py-3 px-4 text-primary font-semibold">Ticket Space</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Ticket Tailor</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Eventbrite</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Humanitix</th>

@@ -65,7 +65,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Ticket className="h-5 w-5 text-primary" />
-            <span className="font-semibold text-foreground">Ticket Deck</span>
+            <span className="font-semibold text-foreground">Ticket Space</span>
           </div>
           <p className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} Ticket Deck. All rights reserved.

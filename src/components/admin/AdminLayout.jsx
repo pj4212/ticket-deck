@@ -74,7 +74,7 @@ export default function AdminLayout() {
         {!collapsed && (
           <div className="flex items-center gap-2">
             <Ticket className="h-5 w-5 text-primary" />
-            <span className="font-bold text-foreground">Session Pass</span>
+            <span className="font-bold text-foreground">Ticket Space</span>
           </div>
         )}
         {collapsed && <Ticket className="h-5 w-5 text-primary mx-auto" />}
@@ -171,7 +171,7 @@ export default function AdminLayout() {
           </Button>
           <div className="flex items-center gap-2">
             <Ticket className="h-4 w-4 text-primary" />
-            <span className="font-semibold">Session Pass</span>
+            <span className="font-semibold">Ticket Space</span>
           </div>
         </header>
         <main className="flex-1 overflow-auto overscroll-none p-4 md:p-6">

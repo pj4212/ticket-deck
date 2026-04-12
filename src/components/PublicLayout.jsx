@@ -22,7 +22,7 @@ export default function PublicLayout() {
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2 text-foreground hover:text-primary transition-colors">
             <Ticket className="h-5 w-5 text-primary" />
-            <span className="font-bold text-base tracking-tight">Ticket Deck</span>
+            <span className="font-bold text-base tracking-tight">Ticket Space</span>
           </Link>
           <div className="flex items-center gap-2">
             {isLanding && (
