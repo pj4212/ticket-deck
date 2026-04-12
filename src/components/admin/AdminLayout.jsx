@@ -6,7 +6,7 @@ import useWorkspace from '@/hooks/useWorkspace';
 import WorkspaceSwitcher from '@/components/admin/WorkspaceSwitcher';
 import { 
   LayoutDashboard, Calendar, Users, Settings, BarChart3, 
-  ChevronLeft, ChevronRight, Menu, LogOut, X, FolderOpen, Mail, ScanLine, Ticket, Zap, History, ShieldAlert, Building2
+  ChevronLeft, ChevronRight, Menu, LogOut, X, FolderOpen, Mail, ScanLine, Ticket, Zap, History, ShieldAlert, Building2, Crown
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -114,6 +114,17 @@ export default function AdminLayout() {
       <div className="p-3 border-t border-sidebar-border space-y-1">
         {!collapsed && (
           <p className="text-xs text-sidebar-foreground mb-2 truncate px-1">{user?.email}</p>
+        )}
+        {user?.role === 'admin' && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="w-full justify-start gap-2 text-yellow-400 hover:text-yellow-300 hover:bg-sidebar-accent" 
+            onClick={() => navigate('/platform')}
+          >
+            <Crown className="h-4 w-4" />
+            {!collapsed && 'Platform Admin'}
+          </Button>
         )}
         <Button 
           variant="ghost" 

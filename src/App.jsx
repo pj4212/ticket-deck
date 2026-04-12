@@ -40,6 +40,17 @@ const RateLimitLogs = React.lazy(() => import('./pages/admin/RateLimitLogs'));
 const WorkspaceManagement = React.lazy(() => import('./pages/admin/WorkspaceManagement'));
 const AccountSettings = React.lazy(() => import('./components/AccountSettings'));
 
+// Platform admin pages
+const PlatformLayout = React.lazy(() => import('./components/platform/PlatformLayout'));
+const PlatformDashboard = React.lazy(() => import('./pages/platform/PlatformDashboard'));
+const PlatformWorkspaces = React.lazy(() => import('./pages/platform/PlatformWorkspaces'));
+const PlatformSubscriptions = React.lazy(() => import('./pages/platform/PlatformSubscriptions'));
+const PlatformFeatureFlags = React.lazy(() => import('./pages/platform/PlatformFeatureFlags'));
+const PlatformSupportTools = React.lazy(() => import('./pages/platform/PlatformSupportTools'));
+const PlatformRiskControls = React.lazy(() => import('./pages/platform/PlatformRiskControls'));
+const PlatformIntegrationHealth = React.lazy(() => import('./pages/platform/PlatformIntegrationHealth'));
+const PlatformAuditLogs = React.lazy(() => import('./pages/platform/PlatformAuditLogs'));
+
 
 const LazyFallback = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -106,6 +117,16 @@ const AuthenticatedApp = () => {
             <Route path=":occurrenceId/dashboard" element={<ScannerDashboard />} />
             <Route path=":occurrenceId/scan" element={<QRScanner />} />
             <Route path=":occurrenceId/list" element={<ManualCheckinList />} />
+          </Route>
+          <Route path="/platform" element={<PlatformLayout />}>
+            <Route index element={<PlatformDashboard />} />
+            <Route path="workspaces" element={<PlatformWorkspaces />} />
+            <Route path="subscriptions" element={<PlatformSubscriptions />} />
+            <Route path="feature-flags" element={<PlatformFeatureFlags />} />
+            <Route path="support" element={<PlatformSupportTools />} />
+            <Route path="risk" element={<PlatformRiskControls />} />
+            <Route path="integrations" element={<PlatformIntegrationHealth />} />
+            <Route path="audit" element={<PlatformAuditLogs />} />
           </Route>
           <Route path="*" element={<PageNotFound />} />
         </Routes>

@@ -47,6 +47,33 @@
     "stripe_customer_id": {
       "type": "string",
       "title": "Stripe Customer ID"
+    },
+    "stripe_subscription_id": {
+      "type": "string",
+      "title": "Stripe Subscription ID"
+    },
+    "seats_used": {
+      "type": "number",
+      "title": "Seats Used",
+      "default": 0
+    },
+    "events_used": {
+      "type": "number",
+      "title": "Events Used",
+      "default": 0
+    },
+    "tickets_used": {
+      "type": "number",
+      "title": "Tickets Used",
+      "default": 0
+    },
+    "feature_overrides_json": {
+      "type": "string",
+      "title": "Feature Overrides (JSON)"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Admin Notes"
     }
   },
   "required": [

@@ -42,7 +42,21 @@
         "invite",
         "remove_member",
         "login",
-        "logout"
+        "logout",
+        "plan_assign",
+        "plan_change",
+        "trial_extend",
+        "feature_flag_toggle",
+        "impersonate_start",
+        "impersonate_end",
+        "workspace_deactivate",
+        "workspace_reactivate",
+        "domain_verify",
+        "domain_remove",
+        "integration_connect",
+        "integration_disconnect",
+        "data_export",
+        "data_delete"
       ]
     },
     "entity_type": {
@@ -64,6 +78,20 @@
     "metadata_json": {
       "type": "string",
       "title": "Metadata (JSON)"
+    },
+    "ip_address": {
+      "type": "string",
+      "title": "IP Address"
+    },
+    "severity": {
+      "type": "string",
+      "title": "Severity",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "default": "info"
     }
   },
   "required": [

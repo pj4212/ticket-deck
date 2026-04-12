@@ -1,0 +1,77 @@
+{
+  "name": "PlatformAlert",
+  "type": "object",
+  "properties": {
+    "workspace_id": {
+      "type": "string",
+      "title": "Workspace",
+      "relationType": "Workspace"
+    },
+    "alert_type": {
+      "type": "string",
+      "title": "Alert Type",
+      "enum": [
+        "high_refund_rate",
+        "failed_webhook",
+        "failed_payment",
+        "email_bounce",
+        "email_complaint",
+        "suspicious_activity",
+        "integration_error",
+        "trial_expiring",
+        "subscription_past_due",
+        "capacity_warning"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "title": "Severity",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "description": {
+      "type": "string",
+      "title": "Description"
+    },
+    "metadata_json": {
+      "type": "string",
+      "title": "Metadata (JSON)"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "open",
+        "acknowledged",
+        "resolved",
+        "dismissed"
+      ],
+      "default": "open"
+    },
+    "resolved_by": {
+      "type": "string",
+      "title": "Resolved By",
+      "relationType": "PlatformUser"
+    },
+    "resolved_at": {
+      "type": "string",
+      "title": "Resolved At",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "alert_type",
+    "severity",
+    "title",
+    "status"
+  ]
+}
