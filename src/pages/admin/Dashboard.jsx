@@ -24,7 +24,7 @@ export default function Dashboard() {
     const [allTickets, allOrders, allEvents, allTicketTypes] = await Promise.all([
       base44.entities.Ticket.filter({ ...wsFilter, ticket_status: 'active' }, '-created_date', 500),
       base44.entities.Order.filter({ ...wsFilter }, '-created_date', 500),
-      base44.entities.EventOccurrence.filter({ ...wsFilter }, '-created_date', 500),
+      base44.entities.Event.filter({ ...wsFilter }, '-created_date', 500),
       base44.entities.TicketType.filter({ ...wsFilter }, '-created_date', 500)
     ]);
 
@@ -73,7 +73,7 @@ export default function Dashboard() {
     }
     const soonEvents = upcoming.filter(e => new Date(e.event_date) <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
     for (const ev of soonEvents) {
-      const evTickets = allTickets.filter(t => t.occurrence_id === ev.id);
+      const evTickets = allTickets.filter(t => t.event_id === ev.id);
       if (evTickets.length < 5) {
         alertList.push({ type: 'info', message: `"${ev.name}" has only ${evTickets.length} tickets sold`, link: `/admin/events/${ev.id}/attendees` });
       }

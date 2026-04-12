@@ -75,10 +75,10 @@ export default function EventForm() {
 
       const sourceId = isEdit ? id : duplicateId;
       if (sourceId) {
-        const evs = await base44.entities.EventOccurrence.filter({ id: sourceId });
+        const evs = await base44.entities.Event.filter({ id: sourceId });
         if (evs.length) {
           const ev = evs[0];
-          const tts = await base44.entities.TicketType.filter({ occurrence_id: sourceId });
+          const tts = await base44.entities.TicketType.filter({ event_id: sourceId });
           
           if (isEdit) {
             setForm({
@@ -194,17 +194,17 @@ export default function EventForm() {
 
     let eventId;
     if (isEdit) {
-      await base44.entities.EventOccurrence.update(id, eventData);
+      await base44.entities.Event.update(id, eventData);
       eventId = id;
     } else {
-      const created = await base44.entities.EventOccurrence.create({ ...eventData, ...wsFilter });
+      const created = await base44.entities.Event.create({ ...eventData, ...wsFilter });
       eventId = created.id;
     }
 
     // Handle ticket types
     for (const tt of ticketTypes) {
       const ttData = {
-        occurrence_id: eventId, name: tt.name, attendance_mode: tt.attendance_mode,
+        event_id: eventId, name: tt.name, attendance_mode: tt.attendance_mode,
         ticket_category: tt.ticket_category || 'candidate',
         price: Number(tt.price) || 0, capacity_limit: tt.capacity_limit ? Number(tt.capacity_limit) : null,
         is_active: tt.is_active !== false, sort_order: Number(tt.sort_order) || 0,
@@ -226,10 +226,10 @@ export default function EventForm() {
     setCreatingWebinar(true);
     setWebinarResult(null);
     try {
-      const response = await base44.functions.invoke('createZoomWebinar', { occurrence_id: id });
+      const response = await base44.functions.invoke('zoomWorkspace', { action: 'create_session', event_id: id, workspace_id: wsFilter.workspace_id });
       const data = response.data;
-      setWebinarResult({ success: true, url: data.registration_url });
-      setForm(prev => ({ ...prev, zoom_link: data.registration_url, zoom_meeting_id: String(data.webinar_id) }));
+      setWebinarResult({ success: true, url: data.registration_url || data.join_url });
+      setForm(prev => ({ ...prev, zoom_link: data.registration_url || data.join_url, zoom_meeting_id: String(data.id) }));
     } catch (err) {
       const msg = err?.response?.data?.error || err.message || 'Failed to create webinar';
       setWebinarResult({ success: false, error: msg });
@@ -590,9 +590,9 @@ export default function EventForm() {
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
             <Button variant="destructive" disabled={deletingEvent} onClick={async () => {
               setDeletingEvent(true);
-              const tts = await base44.entities.TicketType.filter({ occurrence_id: id });
+              const tts = await base44.entities.TicketType.filter({ event_id: id });
               for (const tt of tts) { await base44.entities.TicketType.delete(tt.id); }
-              await base44.entities.EventOccurrence.delete(id);
+              await base44.entities.Event.delete(id);
               setDeletingEvent(false);
               navigate('/admin/events');
             }}>

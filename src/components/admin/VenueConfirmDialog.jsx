@@ -68,7 +68,7 @@ export default function VenueConfirmDialog({ open, onOpenChange, event, location
       venue_details: venueData.venue_details,
       venue_confirmed: true
     };
-    await base44.entities.EventOccurrence.update(event.id, update);
+    await base44.entities.Event.update(event.id, update);
     onConfirmed(event.id, update);
     setSaving(false);
     onOpenChange(false);

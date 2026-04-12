@@ -439,46 +439,32 @@ async function initiatePaidOrder(base44, ctx) {
   });
 }
 
-// ── Email sending ──
+// ── Email sending (delegates to workspace email system) ──
 
 async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBuyer) {
-  const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
-
-  // Order receipt to buyer
-  const receiptHtml = buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName);
-  await base44.asServiceRole.integrations.Core.SendEmail({
-    to: order.buyer_email,
-    subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
-    body: receiptHtml,
-    from_name: 'Session Pass',
-  });
-
-  if (sendAllToBuyer) {
-    // Combined tickets email to buyer
-    const combinedHtml = buildCombinedTicketsHtml(order, event, tickets, ttMap, buyerName);
+  try {
+    await base44.asServiceRole.functions.invoke('sendWorkspaceEmail', {
+      action: 'send_order_emails', order_id: order.id, send_all_to_buyer: sendAllToBuyer,
+    });
+  } catch (e) {
+    console.error('Workspace email failed, using inline fallback:', e.message);
+    // Inline fallback
+    const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
+    const receiptHtml = buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName);
     await base44.asServiceRole.integrations.Core.SendEmail({
       to: order.buyer_email,
-      subject: `Your ${tickets.length} Ticket${tickets.length > 1 ? 's' : ''} — ${event.name}`,
-      body: combinedHtml,
+      subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
+      body: receiptHtml,
       from_name: 'Session Pass',
     });
-  } else {
-    // Individual ticket emails
-    for (const ticket of tickets) {
-      const tt = ttMap[ticket.ticket_type_id];
-      const isOnline = ticket.attendance_mode === 'online';
-      const ticketHtml = buildTicketHtml(ticket, event, tt);
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: ticket.attendee_email,
-        subject: `Your ${isOnline ? 'Online' : 'In-Person'} Ticket — ${event.name}`,
-        body: ticketHtml,
-        from_name: 'Session Pass',
-      });
-    }
   }
-}
 
-// ── Email HTML builders (compact) ──
+  // Dispatch webhook
+  await base44.asServiceRole.functions.invoke('webhookDispatch', {
+    action: 'dispatch', workspace_id: order.workspace_id,
+    event_type: 'order.created', payload: { order_id: order.id, order_number: order.order_number, total: order.total_amount },
+  }).catch(() => {});
+}
 
 function fmtDate(d) {
   if (!d) return '';
@@ -493,18 +479,10 @@ function buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName) {
   const rows = tickets.map(t => {
     const tt = ttMap[t.ticket_type_id];
     const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
-    return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendance_mode==='online'?'Online':'In-Person'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
+    return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
   }).join('');
   const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
-  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">Order #${order.order_number}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Thank you for your booking for <strong>${event.name}</strong>.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)} (${event.timezone||'AEST'})</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:left;font-size:12px">Mode</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="3" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
-}
-
-function buildTicketHtml(ticket, event, tt) {
-  const isOnline = ticket.attendance_mode === 'online';
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ticket.qr_code_hash)}`;
-  const qrBlock = !isOnline ? `<div style="text-align:center;margin:16px 0;padding:16px;border:2px solid #e2e8f0;border-radius:12px"><img src="${qrUrl}" width="240" height="240" style="display:block;margin:auto"/><p style="margin:8px 0 0;font-size:12px;color:#94a3b8">Scan at door for entry</p></div>` : '';
-  const accessInfo = isOnline ? '<p style="background:#eef2ff;padding:12px;border-radius:8px;color:#4338ca;font-size:14px">🖥 Online event — join link will be sent before the event</p>' : (event.venue_details ? `<p style="background:#f0fdf4;padding:12px;border-radius:8px;color:#166534;font-size:14px">📍 ${event.venue_details}</p>` : '');
-  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Your Ticket</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">${event.name}</p></div><div style="padding:24px"><p>Hi <strong>${ticket.attendee_first_name}</strong>,</p><p><strong>Event:</strong> ${event.name}<br><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}<br><strong>Type:</strong> ${tt?.name||'General'} (${isOnline?'Online':'In-Person'})</p>${accessInfo}${qrBlock}</div></div>`;
+  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">Order #${order.order_number}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Your booking for <strong>${event.name}</strong> is confirmed.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="2" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
 }
 
 function buildCombinedTicketsHtml(order, event, tickets, ttMap, buyerName) {

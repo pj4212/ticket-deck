@@ -30,7 +30,7 @@ export default function LiveSessionBanner({ events, tickets }) {
         const end = session.end_datetime ? new Date(session.end_datetime) : null;
         const isLive = now >= start && (!end || now <= end);
         const isPreShow = now < start;
-        const ticketCount = tickets.filter(t => t.occurrence_id === session.id).length;
+        const ticketCount = tickets.filter(t => t.event_id === session.id).length;
 
         return (
           <div key={session.id} className="relative overflow-hidden rounded-xl border border-green-500/30 bg-gradient-to-r from-green-500/10 via-green-500/5 to-card p-5">

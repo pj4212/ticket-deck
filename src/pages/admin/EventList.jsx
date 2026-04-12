@@ -42,7 +42,7 @@ export default function EventList() {
   async function load() {
     setLoading(true);
     const [evs, locs, tix, series, tts] = await Promise.all([
-      base44.entities.EventOccurrence.filter({ ...wsFilter }),
+      base44.entities.Event.filter({ ...wsFilter }),
       base44.entities.Location.filter({ ...wsFilter }),
       base44.entities.Ticket.filter({ ...wsFilter, ticket_status: 'active' }),
       base44.entities.EventSeries.filter({ ...wsFilter }),
@@ -64,7 +64,7 @@ export default function EventList() {
 
   const togglePublish = async (ev) => {
     const updated = { is_published: !ev.is_published, status: ev.is_published ? 'draft' : 'published' };
-    await base44.entities.EventOccurrence.update(ev.id, updated);
+    await base44.entities.Event.update(ev.id, updated);
     setEvents(prev => prev.map(e => e.id === ev.id ? { ...e, ...updated } : e));
   };
 
@@ -72,15 +72,15 @@ export default function EventList() {
     if (!deleteTarget) return;
     setDeleting(true);
     // Delete associated ticket types
-    const tts = await base44.entities.TicketType.filter({ occurrence_id: deleteTarget.id });
+    const tts = await base44.entities.TicketType.filter({ event_id: deleteTarget.id });
     for (const tt of tts) { await base44.entities.TicketType.delete(tt.id); }
-    await base44.entities.EventOccurrence.delete(deleteTarget.id);
+    await base44.entities.Event.delete(deleteTarget.id);
     setEvents(prev => prev.filter(e => e.id !== deleteTarget.id));
     setDeleteTarget(null);
     setDeleting(false);
   };
 
-  const ticketCount = (evId) => tickets.filter(t => t.occurrence_id === evId).length;
+  const ticketCount = (evId) => tickets.filter(t => t.event_id === evId).length;
 
   const handleVenueConfirmed = (eventId, updates) => {
     setEvents(prev => prev.map(e => e.id === eventId ? { ...e, ...updates } : e));
@@ -90,7 +90,7 @@ export default function EventList() {
     setCreatingProjected(projectedSession.id);
     const sourceId = projectedSession._sourceId;
     // Load source event to copy all fields
-    const sourceEvents = await base44.entities.EventOccurrence.filter({ id: sourceId });
+    const sourceEvents = await base44.entities.Event.filter({ id: sourceId });
     const source = sourceEvents[0];
     if (!source) { setCreatingProjected(null); return; }
 
@@ -118,14 +118,14 @@ export default function EventList() {
       status: 'draft',
     };
 
-    const created = await base44.entities.EventOccurrence.create({ ...newData, ...wsFilter });
+    const created = await base44.entities.Event.create({ ...newData, ...wsFilter });
 
     // Copy ticket types from source
-    const sourceTTs = ticketTypesList.filter(tt => tt.occurrence_id === sourceId);
+    const sourceTTs = ticketTypesList.filter(tt => tt.event_id === sourceId);
     for (const tt of sourceTTs) {
       await base44.entities.TicketType.create({
         ...wsFilter,
-        occurrence_id: created.id,
+        event_id: created.id,
         name: tt.name,
         attendance_mode: tt.attendance_mode,
         ticket_category: tt.ticket_category || '',
@@ -139,7 +139,7 @@ export default function EventList() {
     }
 
     // Refresh events list so the timeline updates with the new real session
-    const evs = await base44.entities.EventOccurrence.filter({ ...wsFilter });
+    const evs = await base44.entities.Event.filter({ ...wsFilter });
     setEvents(evs.sort((a, b) => new Date(b.event_date) - new Date(a.event_date)));
     setCreatingProjected(null);
     toast.success(`Session created: ${created.name} on ${projectedSession.event_date}`);
@@ -235,15 +235,15 @@ export default function EventList() {
         <EventTimeline
           events={events}
           locations={locations}
-          ticketCounts={(() => { const m = {}; tickets.forEach(t => { m[t.occurrence_id] = (m[t.occurrence_id] || 0) + 1; }); return m; })()}
-          checkinCounts={(() => { const m = {}; tickets.filter(t => t.check_in_status === 'checked_in').forEach(t => { m[t.occurrence_id] = (m[t.occurrence_id] || 0) + 1; }); return m; })()}
+          ticketCounts={(() => { const m = {}; tickets.forEach(t => { m[t.event_id] = (m[t.event_id] || 0) + 1; }); return m; })()}
+          checkinCounts={(() => { const m = {}; tickets.filter(t => t.check_in_status === 'checked_in').forEach(t => { m[t.event_id] = (m[t.event_id] || 0) + 1; }); return m; })()}
           candidateCounts={(() => {
             const ttMap = {};
             ticketTypesList.forEach(tt => { ttMap[tt.id] = tt; });
             const m = {};
             tickets.forEach(t => {
               const cat = ttMap[t.ticket_type_id]?.ticket_category || 'candidate';
-              if (cat === 'candidate') m[t.occurrence_id] = (m[t.occurrence_id] || 0) + 1;
+              if (cat === 'candidate') m[t.event_id] = (m[t.event_id] || 0) + 1;
             });
             return m;
           })()}
@@ -253,7 +253,7 @@ export default function EventList() {
             const m = {};
             tickets.forEach(t => {
               const cat = ttMap[t.ticket_type_id]?.ticket_category;
-              if (cat === 'business_owner') m[t.occurrence_id] = (m[t.occurrence_id] || 0) + 1;
+              if (cat === 'business_owner') m[t.event_id] = (m[t.event_id] || 0) + 1;
             });
             return m;
           })()}

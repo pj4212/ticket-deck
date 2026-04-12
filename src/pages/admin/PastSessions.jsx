@@ -21,7 +21,7 @@ export default function PastSessions() {
   useEffect(() => {
     async function load() {
       const [evts, locs] = await Promise.all([
-        base44.entities.EventOccurrence.filter({ ...wsFilter }, '-event_date', 500),
+        base44.entities.Event.filter({ ...wsFilter }, '-event_date', 500),
         base44.entities.Location.filter({ ...wsFilter })
       ]);
       const todayStr = new Date().toISOString().slice(0, 10);

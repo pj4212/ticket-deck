@@ -42,11 +42,11 @@ export default function AttendeeList() {
   async function loadData(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
     const [occs, tix, tts, mList, lList, ords] = await Promise.all([
-      base44.entities.EventOccurrence.filter({ id }),
-      base44.entities.Ticket.filter({ occurrence_id: id }),
-      base44.entities.TicketType.filter({ occurrence_id: id }),
-      base44.entities.UplineMentor.filter({}),
-      base44.entities.PlatinumLeader.filter({}),
+      base44.entities.Event.filter({ id }),
+      base44.entities.Ticket.filter({ event_id: id }),
+      base44.entities.TicketType.filter({ event_id: id }),
+      base44.entities.PlatformUser.filter({}).catch(() => []),
+      base44.entities.PlatformUser.filter({}).catch(() => []),
       base44.entities.Order.filter({})
     ]);
     if (occs.length) setOccurrence(occs[0]);
@@ -113,7 +113,7 @@ export default function AttendeeList() {
 
   const openReschedule = async (ticket) => {
     setRescheduleTicket(ticket);
-    const occs = await base44.entities.EventOccurrence.filter({ status: 'published', is_published: true });
+    const occs = await base44.entities.Event.filter({ status: 'published' });
     setAllOccurrences(occs.filter(o => o.id !== id));
   };
 
@@ -122,8 +122,8 @@ export default function AttendeeList() {
     setActionLoading(true);
 
     // Validate uniqueness on target occurrence
-    const validation = await base44.functions.invoke('validateTickets', {
-      occurrence_id: targetOccurrenceId,
+    const validation = await base44.functions.invoke('validateCheckout', {
+      event_id: targetOccurrenceId,
       attendees: [{
         email: rescheduleTicket.attendee_email,
         attendance_mode: rescheduleTicket.attendance_mode
@@ -141,7 +141,8 @@ export default function AttendeeList() {
     // Create new ticket on target occurrence
     const newTicket = await base44.entities.Ticket.create({
       order_id: rescheduleTicket.order_id,
-      occurrence_id: targetOccurrenceId,
+      order_item_id: rescheduleTicket.order_item_id || '',
+      event_id: targetOccurrenceId,
       ticket_type_id: rescheduleTicket.ticket_type_id,
       attendance_mode: rescheduleTicket.attendance_mode,
       attendee_first_name: rescheduleTicket.attendee_first_name,

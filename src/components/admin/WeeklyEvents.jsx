@@ -71,7 +71,7 @@ export default function WeeklyEvents({ events, tickets, ticketTypes }) {
   }
 
   const eventsWithStats = weekEvents.map(ev => {
-    const evTickets = tickets.filter(t => t.occurrence_id === ev.id);
+    const evTickets = tickets.filter(t => t.event_id === ev.id);
     const candidates = evTickets.filter(t => (ttMap[t.ticket_type_id]?.ticket_category || 'candidate') === 'candidate').length;
     const businessOwners = evTickets.filter(t => ttMap[t.ticket_type_id]?.ticket_category === 'business_owner').length;
     const checkedIn = evTickets.filter(t => t.check_in_status === 'checked_in').length;

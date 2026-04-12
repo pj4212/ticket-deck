@@ -40,15 +40,15 @@ export default function Reports() {
       const [rawTix, ords, occs, tts, locs, mList, lList] = await Promise.all([
         base44.entities.Ticket.filter({}),
         base44.entities.Order.filter({ ...wsFilter }),
-        base44.entities.EventOccurrence.filter({ ...wsFilter }),
+        base44.entities.Event.filter({ ...wsFilter }),
         base44.entities.TicketType.filter({ ...wsFilter }),
         base44.entities.Location.filter({ ...wsFilter }),
-        base44.entities.UplineMentor.filter({ ...wsFilter }),
-        base44.entities.PlatinumLeader.filter({ ...wsFilter })
+        base44.entities.PlatformUser.filter({}).catch(() => []),
+        base44.entities.PlatformUser.filter({}).catch(() => [])
       ]);
       // Filter tickets to workspace events (tickets may lack workspace_id)
       const wsEventIds = new Set(occs.map(o => o.id));
-      const tix = rawTix.filter(t => wsEventIds.has(t.occurrence_id));
+      const tix = rawTix.filter(t => wsEventIds.has(t.event_id));
       setTickets(tix);
       setOrders(ords);
       setOccurrences(occs);
@@ -93,11 +93,11 @@ export default function Reports() {
 
   // Report 1: Tickets by Occurrence
   const occurrenceReport = filteredOccurrences.map(o => {
-    const oTickets = activeTickets.filter(t => t.occurrence_id === o.id);
+    const oTickets = activeTickets.filter(t => t.event_id === o.id);
     const checkedIn = oTickets.filter(t => t.check_in_status === 'checked_in').length;
     const candidates = oTickets.filter(t => (ttMap[t.ticket_type_id]?.ticket_category || 'candidate') === 'candidate').length;
     const businessOwners = oTickets.filter(t => ttMap[t.ticket_type_id]?.ticket_category === 'business_owner').length;
-    const oOrders = orders.filter(ord => ord.occurrence_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
+    const oOrders = orders.filter(ord => ord.event_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
     const revenue = oOrders.reduce((sum, ord) => sum + (ord.total_amount || 0), 0);
     return {
       name: o.name, date: o.event_date, location: locations[o.location_id]?.name || '—',
@@ -108,7 +108,7 @@ export default function Reports() {
 
   // Report 2: Tickets by Type
   const typeReport = filteredOccurrences.flatMap(o => {
-    const oTTs = ticketTypes.filter(tt => tt.occurrence_id === o.id);
+    const oTTs = ticketTypes.filter(tt => tt.event_id === o.id);
     return oTTs.map(tt => {
       const count = activeTickets.filter(t => t.ticket_type_id === tt.id).length;
       return { occurrence: o.name, date: o.event_date, type: tt.name, category: tt.ticket_category === 'business_owner' ? 'Business Owner' : 'Candidate', mode: tt.attendance_mode, count };
@@ -119,7 +119,7 @@ export default function Reports() {
 
   // Report 3: Revenue by occurrence
   const revenueReport = filteredOccurrences.map(o => {
-    const oOrders = orders.filter(ord => ord.occurrence_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
+    const oOrders = orders.filter(ord => ord.event_id === o.id && (ord.payment_status === 'completed' || ord.payment_status === 'free'));
     const revenue = oOrders.reduce((s, ord) => s + (ord.total_amount || 0), 0);
     const paidOrders = oOrders.filter(ord => ord.payment_status === 'completed' && ord.total_amount > 0);
     const estimatedFees = paidOrders.reduce((s, ord) => s + (ord.total_amount * 0.029 + 0.30), 0);
@@ -144,7 +144,7 @@ export default function Reports() {
   const leaderReport = {};
   activeTickets.forEach(t => {
     if (!t.platinum_leader_id) return;
-    const occ = occMap[t.occurrence_id];
+    const occ = occMap[t.event_id];
     if (dateFrom && occ?.event_date < dateFrom) return;
     if (dateTo && occ?.event_date > dateTo) return;
     if (!leaderReport[t.platinum_leader_id]) leaderReport[t.platinum_leader_id] = 0;
@@ -154,7 +154,7 @@ export default function Reports() {
   const mentorReport = {};
   activeTickets.forEach(t => {
     if (!t.upline_mentor_id) return;
-    const occ = occMap[t.occurrence_id];
+    const occ = occMap[t.event_id];
     if (dateFrom && occ?.event_date < dateFrom) return;
     if (dateTo && occ?.event_date > dateTo) return;
     if (!mentorReport[t.upline_mentor_id]) mentorReport[t.upline_mentor_id] = 0;

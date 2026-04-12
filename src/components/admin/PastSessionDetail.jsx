@@ -20,7 +20,7 @@ export default function PastSessionDetail({ event, locations, onBack }) {
 
   useEffect(() => {
     async function loadTickets() {
-      const t = await base44.entities.Ticket.filter({ occurrence_id: event.id });
+      const t = await base44.entities.Ticket.filter({ event_id: event.id });
       setTickets(t);
       setLoadingTickets(false);
     }
