@@ -5,13 +5,13 @@ const STEPS = [
     icon: CalendarPlus,
     step: '01',
     title: 'Create Your Event',
-    desc: 'Set up your event in minutes. Add ticket types, set prices in any currency, configure time slots, and customise your event page with your branding.',
+    desc: 'Set up your event in minutes. Add ticket types, set prices in AUD, configure time slots, and customise your event page with your branding.',
   },
   {
     icon: Ticket,
     step: '02',
     title: 'Sell Tickets Online',
-    desc: 'Share your event page and start selling. Accept payments via Stripe in 40+ currencies. Buyers get instant confirmation emails with QR code tickets.',
+    desc: 'Share your event page and start selling. Accept payments via Stripe Australia. Buyers get instant confirmation emails with QR code tickets.',
   },
   {
     icon: QrCode,

@@ -17,7 +17,7 @@ export default function CTASection() {
               <span className="text-primary">without the ridiculous fees?</span>
             </h2>
             <p className="mt-5 text-lg text-muted-foreground max-w-xl mx-auto">
-              Join thousands of event organisers worldwide who are keeping more of their ticket revenue with Ticket Deck.
+              Join Australian event organisers who are keeping more of their ticket revenue with Ticket Deck.
             </p>
             <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Button size="lg" className="gap-2 text-base px-8 h-12 shadow-lg shadow-primary/25" onClick={() => window.location.href = '/admin'}>

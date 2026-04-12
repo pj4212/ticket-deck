@@ -13,7 +13,7 @@ export default function HeroSection() {
           {/* Trust badge */}
           <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-8">
             <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm font-medium text-primary">Trusted by event organisers worldwide</span>
+            <span className="text-sm font-medium text-primary">Built for Australian event organisers</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-foreground leading-[1.1] tracking-tight">
@@ -25,8 +25,8 @@ export default function HeroSection() {
           </h1>
 
           <p className="mt-6 text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            The all-in-one event ticketing platform with the lowest fees. 
-            Create events, sell tickets, scan attendees, and manage everything — from anywhere in the world.
+            Australia's lowest-fee event ticketing platform. 
+            Create events, sell tickets in AUD, scan attendees, and manage everything — built for Aussie organisers.
           </p>
 
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -51,9 +51,9 @@ export default function HeroSection() {
           <div className="mt-16 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
             {[
               { value: '0%', label: 'Fee on free events' },
-              { value: '0.6%', label: 'Lowest platform fee' },
+              { value: '1%', label: 'Platform fee (max $1)' },
               { value: '$0/mo', label: 'No subscriptions' },
-              { value: '∞', label: 'Events & features' },
+              { value: 'GST', label: 'Built-in GST support' },
             ].map((s) => (
               <div key={s.label} className="text-center">
                 <p className="text-2xl sm:text-3xl font-bold text-foreground">{s.value}</p>

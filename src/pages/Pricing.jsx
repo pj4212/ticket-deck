@@ -94,7 +94,7 @@ export default function Pricing() {
           </h1>
 
           <p className="mt-5 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            No subscriptions. No volume tiers. No mental math. Our 1% platform fee is capped at $1 per ticket — so high-ticket organisers are always protected.
+            No subscriptions. No volume tiers. No mental math. Our 1% platform fee is capped at $1 AUD per ticket — so high-ticket organisers are always protected.
           </p>
         </div>
       </section>
@@ -182,7 +182,7 @@ export default function Pricing() {
             Ready to stop overpaying for ticketing?
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Join organisers worldwide who keep more of their ticket revenue.
+            Join Australian organisers who keep more of their ticket revenue.
           </p>
           <Button size="lg" className="mt-6 gap-2 text-base px-8" onClick={() => window.location.href = '/admin'}>
             Start selling tickets <ArrowRight className="h-4 w-4" />

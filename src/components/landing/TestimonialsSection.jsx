@@ -4,21 +4,21 @@ const TESTIMONIALS = [
   {
     name: 'Sarah M.',
     role: 'Workshop Organiser',
-    location: 'Sydney, Australia',
+    location: 'Sydney, NSW',
     text: 'We switched from Eventbrite and saved over $800 in fees in our first quarter. The QR check-in scanner alone is worth it — so much smoother than paper lists.',
     stars: 5,
   },
   {
     name: 'James K.',
     role: 'Festival Director',
-    location: 'London, UK',
+    location: 'Melbourne, VIC',
     text: 'The recurring event templates save us hours every week. We run 12 weekly sessions and Ticket Deck handles the whole thing — ticketing, reminders, check-ins, reports.',
     stars: 5,
   },
   {
     name: 'Maria L.',
     role: 'Non-Profit Coordinator',
-    location: 'Toronto, Canada',
+    location: 'Brisbane, QLD',
     text: 'Free events being truly free was the dealbreaker for us. No hidden fees, no "but you still pay processing". Our charity events cost us nothing to run.',
     stars: 5,
   },
@@ -31,7 +31,7 @@ export default function TestimonialsSection() {
         <div className="text-center mb-16">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Testimonials</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Loved by organisers worldwide
+            Loved by organisers across Australia
           </h2>
         </div>
 

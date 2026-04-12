@@ -7,12 +7,12 @@ const INDUSTRIES = [
   {
     icon: GraduationCap,
     title: 'Workshops & Classes',
-    desc: 'Pottery, cooking, art, language classes — manage registrations with timed entry slots and capacity limits.',
+    desc: 'Pottery, cooking, art, language classes — manage registrations with timed entry slots and capacity limits. Popular across Melbourne, Brisbane, and beyond.',
   },
   {
     icon: Music,
     title: 'Concerts & Festivals',
-    desc: 'Multi-day events, VIP tiers, early bird pricing, and high-volume scanning at the gates.',
+    desc: 'From Splendour-style festivals to local gigs — multi-day events, VIP tiers, early bird pricing, and high-volume scanning at the gates.',
   },
   {
     icon: Briefcase,
@@ -27,7 +27,7 @@ const INDUSTRIES = [
   {
     icon: Users,
     title: 'Community Events',
-    desc: 'Local meetups, cultural celebrations, networking events. Simple setup, beautiful event pages.',
+    desc: 'Local meetups, cultural celebrations, networking events. From Bondi to Byron, simple setup with beautiful event pages.',
   },
   {
     icon: Building2,
@@ -56,7 +56,7 @@ export default function IndustriesSection() {
             Built for every type of event
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            From intimate workshops to large-scale festivals, Ticket Deck adapts to your industry and audience — anywhere in the world.
+            From intimate workshops in Melbourne to large-scale festivals in Sydney, Ticket Deck adapts to your industry and audience across Australia.
           </p>
         </div>
 

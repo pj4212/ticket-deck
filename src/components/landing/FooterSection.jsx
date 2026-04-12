@@ -43,7 +43,7 @@ export default function FooterSection() {
               <span className="font-bold text-lg text-foreground">Ticket Deck</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              The all-in-one global event ticketing platform with the lowest fees. Sell tickets, scan attendees, manage events — from anywhere.
+              Australia's lowest-fee event ticketing platform. Sell tickets, scan attendees, manage events — built for Aussie organisers.
             </p>
           </div>
 
@@ -82,7 +82,7 @@ export default function FooterSection() {
             &copy; {new Date().getFullYear()} Ticket Deck. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <span>Built for event organisers worldwide</span>
+            <span>Built in Australia, for Australian organisers 🇦🇺</span>
           </div>
         </div>
       </div>

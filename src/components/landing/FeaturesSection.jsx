@@ -5,8 +5,8 @@ import {
 } from 'lucide-react';
 
 const FEATURES = [
-  { icon: DollarSign, title: 'Lowest fees anywhere', desc: 'Free for up to 50 tickets/mo. From just 0.6% after that. No subscriptions, ever.' },
-  { icon: Globe, title: 'Multi-currency & global', desc: 'Sell tickets in 40+ currencies. Supports any timezone, locale, and tax configuration.' },
+  { icon: DollarSign, title: 'Australia\'s lowest fees', desc: 'Free events cost nothing. Paid tickets: just 1% capped at $1. No subscriptions, ever.' },
+  { icon: Globe, title: 'AUD & multi-currency', desc: 'Sell tickets in AUD by default, with support for other currencies when you need them.' },
   { icon: Ticket, title: 'Unlimited ticket types', desc: 'In-person, online, hybrid. Group tickets, early birds, timed entry, and more.' },
   { icon: QrCode, title: 'QR code check-in', desc: 'Scan attendees at the door with our mobile check-in scanner. Works offline too.' },
   { icon: Video, title: 'Zoom integration', desc: 'Auto-create Zoom webinars and send personalised join links to online attendees.' },
@@ -14,11 +14,11 @@ const FEATURES = [
   { icon: BarChart3, title: 'Real-time analytics', desc: 'Track sales, check-ins, revenue, and refunds across all events in one dashboard.' },
   { icon: Mail, title: 'Automated emails', desc: 'Order confirmations, event reminders, and updates — all sent automatically in your brand.' },
   { icon: Users, title: 'Team management', desc: 'Assign roles like admin, scanner, or manager. Control who can access what.' },
-  { icon: Shield, title: 'Secure payments', desc: 'PCI-compliant via Stripe. Support for multiple payment providers coming soon.' },
+  { icon: Shield, title: 'Secure payments', desc: 'PCI-compliant via Stripe Australia. Fast payouts to your Australian bank account.' },
   { icon: CalendarRange, title: 'Recurring events', desc: 'Set up weekly, fortnightly, or monthly sessions from templates. Clone events in one click.' },
   { icon: Clock, title: 'Timed entry slots', desc: 'Manage capacity with time-slotted bookings — perfect for tours, classes, and experiences.' },
-  { icon: Languages, title: 'Multi-language ready', desc: 'Support for 25+ locales with RTL layout. Serve audiences in their preferred language.' },
-  { icon: Receipt, title: 'Tax-aware invoicing', desc: 'Configure GST, VAT, or sales tax per workspace or event. Inclusive or exclusive modes.' },
+  { icon: Languages, title: 'Multi-language ready', desc: 'Support for 25+ locales with RTL layout. Serve diverse Australian audiences in their language.' },
+  { icon: Receipt, title: 'GST built in', desc: 'Configure GST per workspace or event. Inclusive or exclusive modes with ABN support.' },
   { icon: Smartphone, title: 'Mobile-first design', desc: 'Booking, scanning, and admin all work beautifully on any device. No app download required.' },
   { icon: Zap, title: 'Webhooks & API', desc: 'Connect to your CRM, Zapier, or custom integrations with real-time webhooks.' },
 ];
@@ -30,7 +30,7 @@ export default function FeaturesSection() {
         <div className="text-center mb-16">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider mb-3">Features</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Everything you need to run world-class events
+            Everything you need to run events in Australia
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
             No restrictive tiers. Every feature included on every plan — from your first free event to your thousandth.

@@ -69,7 +69,7 @@ export default function ComparisonSection() {
             How Ticket Deck compares
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            See how fees and features stack up against the most popular ticketing platforms (based on a $50 ticket).
+            See how fees and features stack up against the most popular ticketing platforms (based on a $50 AUD ticket).
           </p>
         </div>
 
