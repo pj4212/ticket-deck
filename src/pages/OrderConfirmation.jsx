@@ -3,7 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Calendar, Clock, CheckCircle2, MapPin, Monitor, Download } from 'lucide-react';
+import { Loader2, Calendar, Clock, CheckCircle2, MapPin, Monitor, Download, XCircle, AlertTriangle } from 'lucide-react';
+import { OrderStatusBadge, PaymentStatusBadge } from '@/components/admin/OrderStatusBadge';
 import TicketCard from '@/components/booking/TicketCard';
 import AddToCalendar from '@/components/booking/AddToCalendar';
 
@@ -69,7 +70,10 @@ export default function OrderConfirmation() {
   const { order, event, tickets } = data;
   const isPending = order.payment_status === 'pending';
   const isFailed = order.payment_status === 'failed';
-  const isConfirmed = order.payment_status === 'completed' || order.payment_status === 'free';
+  const isRefunded = order.payment_status === 'refunded' || order.payment_status === 'partially_refunded';
+  const isCancelled = order.order_status === 'cancelled';
+  const isRefundRequested = order.order_status === 'refund_requested';
+  const isConfirmed = (order.payment_status === 'completed' || order.payment_status === 'free') && order.order_status === 'confirmed';
 
   const fmtDate = (d) => { if (!d) return ''; const [y,m,day]=d.slice(0,10).split('-').map(Number); return new Date(y,m-1,day).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); };
   const fmtTime = (d) => { if (!d) return ''; const match = d.match(/T(\d{2}):(\d{2})/); if(match){const h=parseInt(match[1],10);return `${h%12||12}:${match[2]} ${h>=12?'pm':'am'}`;} return ''; };
@@ -82,6 +86,15 @@ export default function OrderConfirmation() {
       {isFailed && (
         <Alert variant="destructive" className="mb-6"><AlertDescription>Payment failed. Please try booking again.</AlertDescription></Alert>
       )}
+      {isRefunded && (
+        <Alert className="mb-6 border-purple-500/30 bg-purple-500/10"><AlertDescription>This order has been refunded.</AlertDescription></Alert>
+      )}
+      {isCancelled && !isRefunded && (
+        <Alert variant="destructive" className="mb-6"><XCircle className="h-4 w-4" /><AlertDescription>This order has been cancelled.</AlertDescription></Alert>
+      )}
+      {isRefundRequested && (
+        <Alert className="mb-6 border-amber-500/30 bg-amber-500/10"><AlertTriangle className="h-4 w-4 text-amber-500" /><AlertDescription>A cancellation/refund has been requested for this order.</AlertDescription></Alert>
+      )}
       {isConfirmed && (
         <div className="flex items-center gap-3 mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
           <CheckCircle2 className="h-6 w-6 text-emerald-500" />
@@ -90,7 +103,11 @@ export default function OrderConfirmation() {
       )}
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1">Order #{order.order_number}</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <h1 className="text-2xl font-bold">Order #{order.order_number}</h1>
+          <OrderStatusBadge status={order.order_status} />
+          <PaymentStatusBadge status={order.payment_status} />
+        </div>
         <p className="text-muted-foreground">{order.buyer_first_name} {order.buyer_last_name} · {order.buyer_email}</p>
       </div>
 

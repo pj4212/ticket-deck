@@ -11,6 +11,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Dashboard from './pages/admin/Dashboard';
 import EventList from './pages/admin/EventList';
 import Reports from './pages/admin/Reports';
+import OrderManagement from './pages/admin/OrderManagement';
 
 import MentorManagement from './pages/admin/MentorManagement';
 import SeriesManagement from './pages/admin/SeriesManagement';
@@ -112,6 +113,7 @@ const AuthenticatedApp = () => {
             <Route path="events/new" element={<EventForm />} />
             <Route path="events/:id/edit" element={<EventForm />} />
             <Route path="events/:id/attendees" element={<AttendeeList />} />
+            <Route path="orders" element={<OrderManagement />} />
             <Route path="past-sessions" element={<PastSessions />} />
             <Route path="reports" element={<Reports />} />
             <Route path="settings/mentors" element={<MentorManagement />} />
