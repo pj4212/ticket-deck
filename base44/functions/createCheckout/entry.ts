@@ -1,801 +1,519 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import Stripe from 'npm:stripe@14.14.0';
-import { Resend } from 'npm:resend@3.2.0';
 
-const resend = new Resend(Deno.env.get('RESEND_API_KEY'));
+const RESERVATION_TTL_MINS = 15;
 
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY"));
+// ── Helpers ──
 
-// Retry wrapper with exponential backoff for any retryable operation (DB, email, API)
-async function withRetry(fn, label = 'operation', maxRetries = 8) {
+async function withRetry(fn, label = 'op', maxRetries = 5) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const msg = err?.message || '';
-      const status = err?.statusCode || err?.status || 0;
-      const isRateLimit = status === 429 || msg.includes('Rate limit') || msg.includes('rate');
-      const isServerError = status >= 500;
-      const isRetryable = isRateLimit || isServerError || err?.code === 'ETIMEDOUT' || err?.code === 'ECONNRESET';
-
-      if (!isRetryable || attempt === maxRetries) {
-        console.error(`${label} failed after ${attempt} attempts:`, msg);
-        throw err;
-      }
-
-      // Exponential backoff: 2s, 4s, 8s, 16s, 32s, capped at 60s + jitter
-      const delay = Math.min(2000 * Math.pow(2, attempt - 1), 60000) + Math.random() * 1000;
-      console.warn(`${label} attempt ${attempt} failed (${msg}), retrying in ${Math.round(delay)}ms...`);
+    try { return await fn(); } catch (err) {
+      const s = err?.statusCode || err?.status || 0;
+      const retryable = s === 429 || s >= 500 || err?.code === 'ETIMEDOUT';
+      if (!retryable || attempt === maxRetries) throw err;
+      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 30000) + Math.random() * 500;
+      console.warn(`${label} attempt ${attempt} failed, retry in ${Math.round(delay)}ms`);
       await new Promise(r => setTimeout(r, delay));
     }
   }
 }
 
-// Backwards-compatible alias for email sending
-const sendWithRetry = (fn, maxRetries) => withRetry(fn, 'email', maxRetries);
-
-async function generateQrHash(ticketId, occurrenceId) {
-  const salt = Deno.env.get("QR_SECRET_SALT");
-  const data = new TextEncoder().encode(ticketId + occurrenceId + salt);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  return hashHex.substring(0, 12);
-}
-
 function generateOrderNumber() {
-  const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  return `UV-${date}-${rand}`;
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  return `SP-${d}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
-// ── Shared email brand constants ──
-const BRAND = {
-  headerBg: '#0f172a',
-  accentColor: '#818cf8',
-  buttonBg: '#6366f1',
-  buttonHover: '#4f46e5',
-  headingColor: '#0f172a',
-  cardBg: '#f8fafc',
-  cardBorder: '#e2e8f0',
-  tableBorder: '#e2e8f0',
-  tableHeaderBg: '#f1f5f9',
-  footerBg: '#f8fafc',
-  footerBorder: '#e2e8f0',
-  bodyBg: '#f1f5f9',
-};
-
-function brandHeader(title, subtitle) {
-  return `
-    <tr><td style="background:${BRAND.headerBg};padding:32px 40px;text-align:center;">
-      <p style="margin:0 0 16px;font-size:14px;color:${BRAND.accentColor};font-weight:600;letter-spacing:1.5px;text-transform:uppercase;">Session Pass</p>
-      <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;letter-spacing:-0.5px;">${title}</h1>
-      ${subtitle ? `<p style="margin:8px 0 0;color:rgba(255,255,255,0.6);font-size:14px;">${subtitle}</p>` : ''}
-    </td></tr>`;
+async function generateQrHash(ticketId, eventId) {
+  const salt = Deno.env.get("QR_SECRET_SALT");
+  const data = new TextEncoder().encode(ticketId + eventId + salt);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 12);
 }
 
-function brandFooter() {
-  return `
-    <tr><td style="background:${BRAND.footerBg};padding:24px 40px;border-top:1px solid ${BRAND.footerBorder};text-align:center;">
-      <p style="margin:0 0 4px;font-size:13px;color:${BRAND.accentColor};font-weight:600;">Session Pass</p>
-      <p style="margin:0;font-size:12px;color:#94a3b8;">This is an automated email. Please do not reply directly.</p>
-    </td></tr>`;
+async function generateManageToken(orderId) {
+  const secret = Deno.env.get("QR_SECRET_SALT");
+  const data = new TextEncoder().encode(orderId + ':manage:' + secret);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 24);
 }
+
+// ── Main handler ──
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { buyer, attendees, occurrence_id, origin_url, skip_emails, send_all_to_buyer } = body;
+    const { buyer, attendees, event_id, origin_url, send_all_to_buyer } = body;
 
-    // Load occurrence
-    const occurrences = await withRetry(
-      () => base44.asServiceRole.entities.EventOccurrence.filter({ id: occurrence_id }),
-      'load occurrence'
-    );
-    if (!occurrences.length) {
-      return Response.json({ error: "Event not found" }, { status: 404 });
-    }
-    const occurrence = occurrences[0];
+    // 1. LOAD EVENT
+    const events = await withRetry(() => base44.asServiceRole.entities.Event.filter({ id: event_id }), 'load event');
+    if (!events.length) return Response.json({ error: "Event not found" }, { status: 404 });
+    const event = events[0];
 
-    // Check event is published and sales open
-    if (occurrence.status !== 'published' || !occurrence.is_published) {
-      return Response.json({ error: "Event is not available for booking" }, { status: 400 });
-    }
+    // 2. ACCESS RULES
+    const accessError = enforceEventAccess(event, body.access_password);
+    if (accessError) return Response.json({ error: accessError }, { status: 403 });
 
-    const now = new Date().toISOString();
-    if (occurrence.sales_open_date && now < occurrence.sales_open_date) {
-      return Response.json({ error: "Sales have not opened yet" }, { status: 400 });
-    }
-    if (occurrence.sales_close_date && now > occurrence.sales_close_date) {
-      return Response.json({ error: "Sales have closed" }, { status: 400 });
-    }
+    // 3. LOAD TICKET TYPES
+    const allTT = await withRetry(() => base44.asServiceRole.entities.TicketType.filter({ event_id: event.id }), 'load tt');
+    const ttMap = Object.fromEntries(allTT.map(tt => [tt.id, tt]));
 
-    // Load ticket types for this occurrence
-    const allTicketTypes = await withRetry(
-      () => base44.asServiceRole.entities.TicketType.filter({ occurrence_id: occurrence.id }),
-      'load ticket types'
-    );
-    const ticketTypeMap = {};
-    for (const tt of allTicketTypes) {
-      ticketTypeMap[tt.id] = tt;
-    }
+    // 4. VALIDATE ATTENDEES
+    const valErr = validateAttendees(attendees, ttMap);
+    if (valErr) return Response.json({ error: valErr }, { status: 400 });
 
-    // Validate attendees
+    // 5. DUPLICATE CHECK — inside cart + against existing active tickets
+    const dupErr = await checkDuplicates(base44, event.id, attendees, ttMap);
+    if (dupErr) return Response.json({ error: dupErr }, { status: 409 });
+
+    // 6. CAPACITY CHECK + RESERVE INVENTORY
+    const capacityErr = checkCapacity(attendees, ttMap);
+    if (capacityErr) return Response.json({ error: capacityErr }, { status: 400 });
+
+    // 7. CREATE CHECKOUT DRAFT
+    const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINS * 60 * 1000).toISOString();
+    const draft = await withRetry(() => base44.asServiceRole.entities.CheckoutDraft.create({
+      workspace_id: event.workspace_id,
+      event_id: event.id,
+      buyer_email: buyer.email.toLowerCase(),
+      buyer_first_name: buyer.first_name,
+      buyer_last_name: buyer.last_name,
+      buyer_phone: buyer.phone || '',
+      send_all_to_buyer: !!send_all_to_buyer,
+      status: 'draft',
+      expires_at: expiresAt,
+    }), 'create draft');
+
+    // 8. CREATE ORDER ITEMS (draft status)
+    const orderItems = [];
     for (const att of attendees) {
-      if (!att.first_name || !att.last_name || !att.email || !att.ticket_type_id) {
-        return Response.json({ error: "All attendee fields are required" }, { status: 400 });
-      }
-      const tt = ticketTypeMap[att.ticket_type_id];
-      if (!tt) {
-        return Response.json({ error: `Invalid ticket type: ${att.ticket_type_id}` }, { status: 400 });
-      }
+      const tt = ttMap[att.ticket_type_id];
+      const item = await withRetry(() => base44.asServiceRole.entities.OrderItem.create({
+        checkout_draft_id: draft.id,
+        event_id: event.id,
+        ticket_type_id: att.ticket_type_id,
+        attendance_mode: tt.attendance_mode,
+        attendee_first_name: att.first_name,
+        attendee_last_name: att.last_name,
+        attendee_email: (att.email || buyer.email).toLowerCase(),
+        unit_price: tt.price || 0,
+        custom_field_values_json: att.custom_field_values_json || '',
+        item_status: 'draft',
+      }), `create item ${att.email}`);
+      orderItems.push(item);
     }
 
-    // Check capacity for in_person tickets
+    // 9. CREATE INVENTORY RESERVATIONS for in_person ticket types
     const inPersonCounts = {};
     for (const att of attendees) {
-      const tt = ticketTypeMap[att.ticket_type_id];
-      if (tt.attendance_mode === 'in_person') {
+      const tt = ttMap[att.ticket_type_id];
+      if (tt.attendance_mode === 'in_person' && tt.capacity_limit != null) {
         inPersonCounts[tt.id] = (inPersonCounts[tt.id] || 0) + 1;
       }
     }
-    for (const [ttId, count] of Object.entries(inPersonCounts)) {
-      const tt = ticketTypeMap[ttId];
-      if (tt.capacity_limit != null && (tt.quantity_sold || 0) + count > tt.capacity_limit) {
-        return Response.json({ 
-          error: `Not enough capacity for "${tt.name}". Only ${tt.capacity_limit - (tt.quantity_sold || 0)} spots remaining.` 
-        }, { status: 400 });
-      }
+    for (const [ttId, qty] of Object.entries(inPersonCounts)) {
+      await withRetry(() => base44.asServiceRole.entities.InventoryReservation.create({
+        workspace_id: event.workspace_id,
+        event_id: event.id,
+        ticket_type_id: ttId,
+        checkout_draft_id: draft.id,
+        reserved_quantity: qty,
+        expires_at: expiresAt,
+        status: 'active',
+      }), `reserve ${ttId}`);
+      // Increment quantity_reserved on ticket type
+      const tt = ttMap[ttId];
+      await withRetry(() => base44.asServiceRole.entities.TicketType.update(ttId, {
+        quantity_reserved: (tt.quantity_reserved || 0) + qty
+      }), `incr reserved ${ttId}`);
     }
 
-    // Calculate total
+    // 10. CALCULATE TOTAL
     let totalAmount = 0;
     for (const att of attendees) {
-      const tt = ticketTypeMap[att.ticket_type_id];
-      totalAmount += tt.price || 0;
+      totalAmount += ttMap[att.ticket_type_id].price || 0;
     }
-
-    const orderNumber = generateOrderNumber();
     const isFree = totalAmount === 0;
+    const orderNumber = generateOrderNumber();
 
-    // Create order
-    const order = await withRetry(
-      () => base44.asServiceRole.entities.Order.create({
-        order_number: orderNumber,
-        buyer_name: `${buyer.first_name} ${buyer.last_name}`,
-        buyer_email: buyer.email,
-        buyer_phone: buyer.phone || '',
-        occurrence_id: occurrence.id,
-        total_amount: totalAmount,
-        payment_status: isFree ? 'free' : 'pending',
-        order_status: 'confirmed',
-        send_all_to_buyer: !!send_all_to_buyer
-      }),
-      'create order'
-    );
-
-    if (!isFree) {
-      for (const att of attendees) {
-        const tt = ticketTypeMap[att.ticket_type_id];
-        const tempHash = 'pending';
-        await withRetry(
-          () => base44.asServiceRole.entities.Ticket.create({
-            workspace_id: occurrence.workspace_id || '',
-            order_id: order.id,
-            occurrence_id: occurrence.id,
-            ticket_type_id: att.ticket_type_id,
-            attendance_mode: tt.attendance_mode,
-            attendee_first_name: att.first_name,
-            attendee_last_name: att.last_name,
-            attendee_email: att.email.toLowerCase(),
-            upline_mentor_id: att.upline_mentor_id || '',
-            platinum_leader_id: att.platinum_leader_id || '',
-            qr_code_hash: tempHash,
-            ticket_status: 'active'
-          }),
-          `create paid ticket for ${att.email}`
-        );
-      }
-
-      // Create Stripe Checkout session
-      const lineItems = [];
-      const ticketsByType = {};
-      for (const att of attendees) {
-        const tt = ticketTypeMap[att.ticket_type_id];
-        if (tt.price > 0) {
-          if (!ticketsByType[tt.id]) {
-            ticketsByType[tt.id] = { tt, count: 0 };
-          }
-          ticketsByType[tt.id].count++;
-        }
-      }
-
-      for (const { tt, count } of Object.values(ticketsByType)) {
-        lineItems.push({
-          price_data: {
-            currency: 'aud',
-            product_data: { name: `${tt.name} (${tt.attendance_mode === 'online' ? 'Online' : 'In-Person'})` },
-            unit_amount: Math.round(tt.price * 100)
-          },
-          quantity: count
-        });
-      }
-
-      const baseUrl = origin_url || 'https://session-pass.com';
-      const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
-        line_items: lineItems,
-        mode: 'payment',
-        success_url: `${baseUrl}/order/${orderNumber}?payment=success`,
-        cancel_url: `${baseUrl}/event/${occurrence.slug}?payment=cancelled`,
-        customer_email: buyer.email,
-        metadata: {
-          order_id: order.id,
-          order_number: orderNumber,
-          base44_app_id: Deno.env.get("BASE44_APP_ID")
-        }
+    if (isFree) {
+      // ── FREE ORDER FLOW ──
+      return await completeFreeOrder(base44, {
+        draft, event, orderItems, ttMap, buyer, totalAmount, orderNumber,
+        send_all_to_buyer: !!send_all_to_buyer, inPersonCounts, origin_url
       });
-
-      await withRetry(
-        () => base44.asServiceRole.entities.Order.update(order.id, {
-          stripe_checkout_session_id: session.id
-        }),
-        'update order with stripe session'
-      );
-
-      return Response.json({ 
-        checkout_url: session.url,
-        order_number: orderNumber,
-        payment_required: true
+    } else {
+      // ── PAID ORDER FLOW ──
+      return await initiatePaidOrder(base44, {
+        draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
+        send_all_to_buyer: !!send_all_to_buyer, origin_url
       });
     }
 
-    // FREE ORDER — create tickets in parallel batches for speed
-    const tickets = [];
-    const BATCH_SIZE = 4;
-    for (let i = 0; i < attendees.length; i += BATCH_SIZE) {
-      const batch = attendees.slice(i, i + BATCH_SIZE);
-      const batchResults = await Promise.all(batch.map(async (att) => {
-        const tt = ticketTypeMap[att.ticket_type_id];
-        const ticket = await withRetry(
-          () => base44.asServiceRole.entities.Ticket.create({
-            workspace_id: occurrence.workspace_id || '',
-            order_id: order.id,
-            occurrence_id: occurrence.id,
-            ticket_type_id: att.ticket_type_id,
-            attendance_mode: tt.attendance_mode,
-            attendee_first_name: att.first_name,
-            attendee_last_name: att.last_name,
-            attendee_email: att.email.toLowerCase(),
-            upline_mentor_id: att.upline_mentor_id || '',
-            platinum_leader_id: att.platinum_leader_id || '',
-            qr_code_hash: 'temp',
-            ticket_status: 'active'
-          }),
-          `create free ticket for ${att.email}`
-        );
-        // Generate QR hash and update ticket (must happen after create to get ticket.id)
-        const qrHash = await generateQrHash(ticket.id, occurrence.id);
-        await withRetry(
-          () => base44.asServiceRole.entities.Ticket.update(ticket.id, { qr_code_hash: qrHash }),
-          `update QR hash for ${att.email}`
-        );
-        ticket.qr_code_hash = qrHash;
-        return ticket;
-      }));
-      tickets.push(...batchResults);
-    }
-
-    // Batch quantity_sold updates — one update per ticket type instead of per ticket
-    const qtyCounts = {};
-    for (const att of attendees) {
-      qtyCounts[att.ticket_type_id] = (qtyCounts[att.ticket_type_id] || 0) + 1;
-    }
-    await Promise.all(Object.entries(qtyCounts).map(([ttId, count]) => {
-      const tt = ticketTypeMap[ttId];
-      return withRetry(
-        () => base44.asServiceRole.entities.TicketType.update(ttId, {
-          quantity_sold: (tt.quantity_sold || 0) + count
-        }),
-        `update quantity_sold for ${tt.name}`
-      );
-    }));
-
-    // Register online attendees with Zoom webinar
-    let zoomJoinUrls = {};
-    const onlineTickets = tickets.filter(t => t.attendance_mode === 'online');
-    const hasZoomWebinar = occurrence.zoom_meeting_id || (occurrence.zoom_link && /\/register\/WN_|\/w\/\d+/.test(occurrence.zoom_link));
-    if (onlineTickets.length > 0 && hasZoomWebinar) {
-      try {
-        const zoomRes = await base44.asServiceRole.functions.invoke('registerZoomAttendee', {
-          tickets: onlineTickets.map(t => ({
-            id: t.id,
-            attendance_mode: t.attendance_mode,
-            attendee_first_name: t.attendee_first_name,
-            attendee_last_name: t.attendee_last_name,
-            attendee_email: t.attendee_email,
-            platinum_leader_id: t.platinum_leader_id || ''
-          })),
-          occurrence_id: occurrence.id
-        });
-        const zoomData = zoomRes?.data || zoomRes;
-        if (zoomData?.registrations) {
-          for (const reg of zoomData.registrations) {
-            if (reg.join_url) {
-              zoomJoinUrls[reg.ticket_id] = reg.join_url;
-            }
-          }
-        }
-        console.log(`Zoom registration complete: ${Object.keys(zoomJoinUrls).length} join URLs obtained`);
-      } catch (err) {
-        console.error('Zoom registration failed (non-blocking):', err.message);
-      }
-    }
-
-    // Send emails with controlled concurrency to avoid rate limits
-    if (!skip_emails) {
-      if (send_all_to_buyer) {
-        // Only 2 emails — send in parallel
-        await Promise.all([
-          sendOrderReceiptEmail(base44, order, occurrence, tickets, ticketTypeMap)
-            .catch(err => console.error(`Failed to send order receipt to ${order.buyer_email}:`, err.message)),
-          sendCombinedTicketsEmail(order, occurrence, tickets, ticketTypeMap, zoomJoinUrls)
-            .catch(err => console.error(`Failed to send combined tickets email to ${order.buyer_email}:`, err.message))
-        ]);
-      } else {
-        // Send order receipt first
-        await sendOrderReceiptEmail(base44, order, occurrence, tickets, ticketTypeMap)
-          .catch(err => console.error(`Failed to send order receipt to ${order.buyer_email}:`, err.message));
-        // Send individual ticket emails in batches of 5 to avoid rate limits
-        const EMAIL_BATCH = 5;
-        for (let i = 0; i < tickets.length; i += EMAIL_BATCH) {
-          const batch = tickets.slice(i, i + EMAIL_BATCH);
-          await Promise.all(batch.map(ticket =>
-            sendTicketEmail(base44, ticket, occurrence, ticketTypeMap[ticket.ticket_type_id], zoomJoinUrls[ticket.id])
-              .catch(err => console.error(`Failed to send ticket email to ${ticket.attendee_email}:`, err.message))
-          ));
-        }
-      }
-    }
-
-    return Response.json({ 
-      order_number: orderNumber,
-      payment_required: false 
-    });
   } catch (error) {
     console.error("createCheckout error:", error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
 
-function formatEventDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+// ── Access enforcement ──
+
+function enforceEventAccess(event, password) {
+  if (event.status !== 'published') return "Event is not available for booking";
+  const now = new Date().toISOString();
+  if (event.sales_open_at && now < event.sales_open_at) return "Sales have not opened yet";
+  if (event.sales_close_at && now > event.sales_close_at) return "Sales have closed";
+  if (event.visibility_mode === 'private_invite_only') return "This event is invite-only";
+  if (event.visibility_mode === 'password_protected') {
+    if (!password || password !== event.access_password) return "Incorrect event password";
+  }
+  return null;
 }
 
-function formatTime(datetimeStr) {
-  if (!datetimeStr) return '';
-  const d = new Date(datetimeStr);
-  return d.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+// ── Validation ──
+
+function validateAttendees(attendees, ttMap) {
+  if (!attendees?.length) return "At least one attendee is required";
+  for (const att of attendees) {
+    if (!att.first_name || !att.last_name || !att.email || !att.ticket_type_id) {
+      return "All attendee fields are required";
+    }
+    if (!ttMap[att.ticket_type_id]) return `Invalid ticket type: ${att.ticket_type_id}`;
+    const tt = ttMap[att.ticket_type_id];
+    if (!tt.is_active) return `Ticket type "${tt.name}" is not available`;
+  }
+  return null;
 }
 
-function buildOrderEmailHtml(order, occurrence, tickets, ticketTypeMap) {
-  const eventDate = formatEventDate(occurrence.event_date);
-  const startTime = formatTime(occurrence.start_datetime);
-  const endTime = formatTime(occurrence.end_datetime);
-  const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : startTime || '';
-  const totalText = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
-  const orderUrl = `https://session-pass.com/order/${order.order_number}`;
+function checkCapacity(attendees, ttMap) {
+  const counts = {};
+  for (const att of attendees) {
+    const tt = ttMap[att.ticket_type_id];
+    if (tt.capacity_limit != null) {
+      counts[tt.id] = (counts[tt.id] || 0) + 1;
+    }
+  }
+  for (const [ttId, count] of Object.entries(counts)) {
+    const tt = ttMap[ttId];
+    const available = tt.capacity_limit - (tt.quantity_sold || 0) - (tt.quantity_reserved || 0);
+    if (count > available) {
+      return `Not enough capacity for "${tt.name}". Only ${Math.max(0, available)} spots remaining.`;
+    }
+  }
+  return null;
+}
 
-  const ticketRows = tickets.map(t => {
-    const tt = ticketTypeMap[t.ticket_type_id];
-    const mode = t.attendance_mode === 'online' ? 'Online' : 'In-Person';
-    const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
-    return `
-      <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.tableBorder};font-size:14px;color:#334155;">${t.attendee_first_name} ${t.attendee_last_name}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.tableBorder};font-size:14px;color:#334155;">${tt?.name || 'Ticket'}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.tableBorder};font-size:14px;color:#64748b;">${mode}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid ${BRAND.tableBorder};font-size:14px;color:#334155;text-align:right;">${price}</td>
-      </tr>`;
-  }).join('');
+// ── Duplicate detection ──
 
-  let venueBlock = '';
-  if (occurrence.venue_details) {
-    venueBlock = `
-      <tr>
-        <td style="padding:6px 0;color:#94a3b8;font-size:13px;width:100px;">Venue</td>
-        <td style="padding:6px 0;font-size:14px;color:#334155;">${occurrence.venue_details}</td>
-      </tr>`;
+async function checkDuplicates(base44, eventId, attendees, ttMap) {
+  // 1. Intra-cart duplicates: same email + same attendance_mode
+  const seen = new Set();
+  for (const att of attendees) {
+    const tt = ttMap[att.ticket_type_id];
+    const key = `${att.email.toLowerCase()}::${tt.attendance_mode}`;
+    if (seen.has(key)) {
+      return `Duplicate attendee: ${att.email} already has a ${tt.attendance_mode} ticket in this order`;
+    }
+    seen.add(key);
   }
 
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:${BRAND.bodyBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.bodyBg};padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(15,23,42,0.08);">
-        
-        ${brandHeader('Booking Confirmed ✓', `Order #${order.order_number}`)}
+  // 2. Cross-order duplicates against existing active tickets
+  const existingTickets = await withRetry(
+    () => base44.asServiceRole.entities.Ticket.filter({ event_id: eventId, ticket_status: 'active' }),
+    'load existing tickets'
+  );
+  const existingKeys = new Set(existingTickets.map(t =>
+    `${t.attendee_email.toLowerCase()}::${t.attendance_mode}`
+  ));
 
-        <tr><td style="padding:32px 40px 16px;">
-          <p style="margin:0;font-size:16px;color:#334155;">Hi <strong>${order.buyer_name}</strong>,</p>
-          <p style="margin:8px 0 0;font-size:14px;color:#64748b;line-height:1.5;">Thank you for your booking. Here are your details:</p>
-        </td></tr>
-
-        <tr><td style="padding:8px 40px 24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.cardBg};border-radius:8px;padding:20px;border:1px solid ${BRAND.cardBorder};">
-            <tr><td>
-              <h2 style="margin:0 0 12px;font-size:18px;color:${BRAND.headingColor};">${occurrence.name}</h2>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;width:100px;">Date</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;font-weight:600;">${eventDate}</td>
-                </tr>
-                ${timeStr ? `<tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Time</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">${timeStr} (${occurrence.timezone || 'AEST'})</td>
-                </tr>` : ''}
-                ${venueBlock}
-              </table>
-            </td></tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:0 40px 24px;">
-          <h3 style="margin:0 0 12px;font-size:15px;color:${BRAND.headingColor};text-transform:uppercase;letter-spacing:0.5px;">Your Tickets</h3>
-          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${BRAND.tableBorder};border-radius:8px;overflow:hidden;">
-            <tr style="background:${BRAND.tableHeaderBg};">
-              <th style="padding:10px 12px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Attendee</th>
-              <th style="padding:10px 12px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Type</th>
-              <th style="padding:10px 12px;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Mode</th>
-              <th style="padding:10px 12px;text-align:right;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">Price</th>
-            </tr>
-            ${ticketRows}
-            <tr style="background:${BRAND.cardBg};">
-              <td colspan="3" style="padding:12px;font-size:14px;font-weight:700;color:${BRAND.headingColor};">Total</td>
-              <td style="padding:12px;font-size:14px;font-weight:700;color:${BRAND.headingColor};text-align:right;">${totalText}</td>
-            </tr>
-          </table>
-        </td></tr>
-
-        <tr><td style="padding:0 40px 32px;text-align:center;">
-          <a href="${orderUrl}" style="display:inline-block;background:${BRAND.buttonBg};color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:14px;font-weight:600;letter-spacing:0.3px;">View Your Tickets</a>
-        </td></tr>
-
-        <tr><td style="padding:0 40px 24px;">
-          <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.5;">Each attendee will receive a separate email with their individual ticket and QR code for check-in.</p>
-        </td></tr>
-
-        ${brandFooter()}
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  for (const att of attendees) {
+    const tt = ttMap[att.ticket_type_id];
+    const key = `${att.email.toLowerCase()}::${tt.attendance_mode}`;
+    if (existingKeys.has(key)) {
+      return `${att.email} already has an active ${tt.attendance_mode} ticket for this event`;
+    }
+  }
+  return null;
 }
 
-function buildTicketEmailHtml(ticket, occurrence, ticketType, joinUrl) {
-  const eventDate = formatEventDate(occurrence.event_date);
-  const startTime = formatTime(occurrence.start_datetime);
-  const endTime = formatTime(occurrence.end_datetime);
-  const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : startTime || '';
-  const isOnline = ticket.attendance_mode === 'online';
-  const mode = isOnline ? 'Online' : 'In-Person';
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ticket.qr_code_hash)}`;
-  const registrationLink = occurrence.zoom_link || '';
+// ── Free order completion ──
 
-  let accessBlock = '';
-  if (isOnline && joinUrl) {
-    const joinBtnHtml = `
-        <p style="margin:0 0 8px;font-size:13px;color:#64748b;line-height:1.4;">You've been registered for the webinar. Use the link below to join:</p>
-        <a href="${joinUrl}" style="display:inline-block;background:${BRAND.buttonBg};color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:6px;font-size:14px;font-weight:600;margin-bottom:12px;">Join Webinar →</a>`;
-    accessBlock = `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ff;border-radius:8px;padding:20px;border:1px solid #c7d2fe;">
-          <tr><td>
-            <h3 style="margin:0 0 8px;font-size:15px;color:#4338ca;">🖥 Join Online</h3>
-            ${joinBtnHtml}
-          </td></tr>
-        </table>
-      </td></tr>`;
-  } else if (isOnline) {
-    accessBlock = `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ff;border-radius:8px;padding:20px;border:1px solid #c7d2fe;">
-          <tr><td>
-            <h3 style="margin:0 0 4px;font-size:15px;color:#4338ca;">🖥 Online Event</h3>
-            <p style="margin:0;font-size:13px;color:#64748b;">Your webinar join link will be emailed to you before the event.</p>
-          </td></tr>
-        </table>
-      </td></tr>`;
+async function completeFreeOrder(base44, ctx) {
+  const { draft, event, orderItems, ttMap, buyer, totalAmount, orderNumber,
+          send_all_to_buyer, inPersonCounts } = ctx;
+
+  // Create confirmed order
+  const order = await withRetry(() => base44.asServiceRole.entities.Order.create({
+    workspace_id: event.workspace_id,
+    event_id: event.id,
+    order_number: orderNumber,
+    buyer_first_name: buyer.first_name,
+    buyer_last_name: buyer.last_name,
+    buyer_email: buyer.email.toLowerCase(),
+    buyer_phone: buyer.phone || '',
+    total_amount: totalAmount,
+    currency: 'AUD',
+    payment_status: 'free',
+    order_status: 'confirmed',
+    checkout_draft_id: draft.id,
+  }), 'create order');
+
+  // Confirm order items + create tickets
+  const tickets = [];
+  for (const item of orderItems) {
+    // Update item to confirmed with order_id
+    await withRetry(() => base44.asServiceRole.entities.OrderItem.update(item.id, {
+      order_id: order.id,
+      item_status: 'confirmed',
+    }), `confirm item ${item.id}`);
+
+    // Create ticket
+    const ticket = await withRetry(() => base44.asServiceRole.entities.Ticket.create({
+      order_id: order.id,
+      order_item_id: item.id,
+      event_id: event.id,
+      ticket_type_id: item.ticket_type_id,
+      attendance_mode: item.attendance_mode,
+      attendee_first_name: item.attendee_first_name,
+      attendee_last_name: item.attendee_last_name,
+      attendee_email: item.attendee_email,
+      qr_code_hash: 'pending',
+      ticket_status: 'active',
+    }), `create ticket ${item.attendee_email}`);
+
+    // Generate QR hash
+    const qrHash = await generateQrHash(ticket.id, event.id);
+    await withRetry(() => base44.asServiceRole.entities.Ticket.update(ticket.id, { qr_code_hash: qrHash }), `qr ${ticket.id}`);
+    ticket.qr_code_hash = qrHash;
+    tickets.push(ticket);
+  }
+
+  // Update quantity_sold and release reservations
+  const soldCounts = {};
+  for (const item of orderItems) {
+    soldCounts[item.ticket_type_id] = (soldCounts[item.ticket_type_id] || 0) + 1;
+  }
+  for (const [ttId, count] of Object.entries(soldCounts)) {
+    const tt = ttMap[ttId];
+    const reserved = inPersonCounts[ttId] || 0;
+    await withRetry(() => base44.asServiceRole.entities.TicketType.update(ttId, {
+      quantity_sold: (tt.quantity_sold || 0) + count,
+      quantity_reserved: Math.max(0, (tt.quantity_reserved || 0) - reserved),
+    }), `update sold ${ttId}`);
+  }
+
+  // Convert reservations
+  const reservations = await base44.asServiceRole.entities.InventoryReservation.filter({ checkout_draft_id: draft.id });
+  for (const res of reservations) {
+    await withRetry(() => base44.asServiceRole.entities.InventoryReservation.update(res.id, { status: 'converted' }), `convert res ${res.id}`);
+  }
+
+  // Mark draft completed
+  await withRetry(() => base44.asServiceRole.entities.CheckoutDraft.update(draft.id, { status: 'completed' }), 'complete draft');
+
+  // Generate manage token
+  const manageToken = await generateManageToken(order.id);
+
+  // Send emails (non-blocking)
+  sendOrderEmails(base44, order, event, tickets, ttMap, send_all_to_buyer).catch(e => console.error('Email error:', e.message));
+
+  return Response.json({
+    order_number: orderNumber,
+    manage_token: manageToken,
+    payment_required: false,
+  });
+}
+
+// ── Paid order initiation ──
+
+async function initiatePaidOrder(base44, ctx) {
+  const { draft, event, orderItems, ttMap, buyer, attendees, totalAmount, orderNumber,
+          send_all_to_buyer, origin_url } = ctx;
+
+  // Create pending order (no tickets yet)
+  const order = await withRetry(() => base44.asServiceRole.entities.Order.create({
+    workspace_id: event.workspace_id,
+    event_id: event.id,
+    order_number: orderNumber,
+    buyer_first_name: buyer.first_name,
+    buyer_last_name: buyer.last_name,
+    buyer_email: buyer.email.toLowerCase(),
+    buyer_phone: buyer.phone || '',
+    total_amount: totalAmount,
+    currency: 'AUD',
+    payment_status: 'pending',
+    order_status: 'confirmed',
+    checkout_draft_id: draft.id,
+  }), 'create order');
+
+  // Update order items with order_id, status to reserved
+  for (const item of orderItems) {
+    await withRetry(() => base44.asServiceRole.entities.OrderItem.update(item.id, {
+      order_id: order.id,
+      item_status: 'reserved',
+    }), `reserve item ${item.id}`);
+  }
+
+  // Load workspace Stripe credentials
+  const integrations = await base44.asServiceRole.entities.WorkspaceIntegration.filter({
+    workspace_id: event.workspace_id,
+    provider: 'stripe',
+    status: 'active',
+  });
+
+  let stripeKey = null;
+  if (integrations.length && integrations[0].credentials_json_encrypted) {
+    try {
+      const creds = JSON.parse(integrations[0].credentials_json_encrypted);
+      stripeKey = creds.secret_key;
+    } catch (e) { /* fall through */ }
+  }
+
+  // Fallback to workspace settings if integration entity not configured
+  if (!stripeKey) {
+    const settings = await base44.asServiceRole.entities.WorkspaceSetting.filter({
+      workspace_id: event.workspace_id,
+      key: 'stripe_secret_key',
+    });
+    if (settings.length) {
+      try { stripeKey = JSON.parse(settings[0].value_json); } catch (e) { stripeKey = settings[0].value_json; }
+    }
+  }
+
+  if (!stripeKey) {
+    return Response.json({ error: "Payment processing is not configured for this workspace" }, { status: 500 });
+  }
+
+  const stripe = new Stripe(stripeKey);
+
+  // Build line items
+  const typeQty = {};
+  for (const att of attendees) {
+    const tt = ttMap[att.ticket_type_id];
+    if (tt.price > 0) {
+      typeQty[tt.id] = (typeQty[tt.id] || 0) + 1;
+    }
+  }
+
+  const lineItems = Object.entries(typeQty).map(([ttId, count]) => {
+    const tt = ttMap[ttId];
+    return {
+      price_data: {
+        currency: (tt.currency || 'AUD').toLowerCase(),
+        product_data: { name: `${tt.name} (${tt.attendance_mode === 'online' ? 'Online' : 'In-Person'})` },
+        unit_amount: Math.round(tt.price * 100),
+      },
+      quantity: count,
+    };
+  });
+
+  const baseUrl = origin_url || 'https://session-pass.com';
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ['card'],
+    line_items: lineItems,
+    mode: 'payment',
+    success_url: `${baseUrl}/order/${orderNumber}?payment=success`,
+    cancel_url: `${baseUrl}/event/${event.slug}?payment=cancelled`,
+    customer_email: buyer.email,
+    expires_at: Math.floor(Date.now() / 1000) + RESERVATION_TTL_MINS * 60,
+    metadata: {
+      order_id: order.id,
+      order_number: orderNumber,
+      checkout_draft_id: draft.id,
+      workspace_id: event.workspace_id,
+    },
+  });
+
+  // Store stripe IDs
+  await withRetry(() => base44.asServiceRole.entities.Order.update(order.id, {
+    stripe_checkout_session_id: session.id,
+  }), 'update stripe session');
+
+  // Mark draft submitted
+  await withRetry(() => base44.asServiceRole.entities.CheckoutDraft.update(draft.id, { status: 'submitted' }), 'submit draft');
+
+  return Response.json({
+    checkout_url: session.url,
+    order_number: orderNumber,
+    payment_required: true,
+  });
+}
+
+// ── Email sending ──
+
+async function sendOrderEmails(base44, order, event, tickets, ttMap, sendAllToBuyer) {
+  const buyerName = `${order.buyer_first_name} ${order.buyer_last_name}`;
+
+  // Order receipt to buyer
+  const receiptHtml = buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName);
+  await base44.asServiceRole.integrations.Core.SendEmail({
+    to: order.buyer_email,
+    subject: `Booking Confirmed — ${event.name} | Order #${order.order_number}`,
+    body: receiptHtml,
+    from_name: 'Session Pass',
+  });
+
+  if (sendAllToBuyer) {
+    // Combined tickets email to buyer
+    const combinedHtml = buildCombinedTicketsHtml(order, event, tickets, ttMap, buyerName);
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: order.buyer_email,
+      subject: `Your ${tickets.length} Ticket${tickets.length > 1 ? 's' : ''} — ${event.name}`,
+      body: combinedHtml,
+      from_name: 'Session Pass',
+    });
   } else {
-    let venueText = occurrence.venue_details || 'Venue details will be provided closer to the event.';
-    accessBlock = `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:8px;padding:20px;border:1px solid #bbf7d0;">
-          <tr><td>
-            <h3 style="margin:0 0 4px;font-size:15px;color:#166534;">📍 In-Person Venue</h3>
-            <p style="margin:0;font-size:14px;color:#334155;">${venueText}</p>
-          </td></tr>
-        </table>
-      </td></tr>`;
-  }
-
-  let qrBlock = '';
-  if (!isOnline) {
-    qrBlock = `
-      <tr><td style="padding:0 40px 32px;text-align:center;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;border:2px solid ${BRAND.cardBorder};padding:24px;">
-          <tr><td style="text-align:center;">
-            <img src="${qrCodeUrl}" alt="QR Code" width="280" height="280" style="display:block;margin:0 auto;" />
-            <p style="margin:16px 0 0;font-size:12px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Scan at door for entry</p>
-          </td></tr>
-        </table>
-      </td></tr>`;
-  }
-
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:${BRAND.bodyBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.bodyBg};padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(15,23,42,0.08);">
-        
-        ${brandHeader('Your Ticket', occurrence.name)}
-
-        <tr><td style="padding:32px 40px 16px;">
-          <p style="margin:0;font-size:16px;color:#334155;">Hi <strong>${ticket.attendee_first_name}</strong>,</p>
-          <p style="margin:8px 0 0;font-size:14px;color:#64748b;line-height:1.5;">Here's your ticket for the upcoming event.</p>
-        </td></tr>
-
-        <tr><td style="padding:8px 40px 24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.cardBg};border-radius:8px;border:1px solid ${BRAND.cardBorder};">
-            <tr><td style="padding:20px;">
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;width:110px;">Event</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;font-weight:600;">${occurrence.name}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Date</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">${eventDate}</td>
-                </tr>
-                ${timeStr ? `<tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Time</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">${timeStr} (${occurrence.timezone || 'AEST'})</td>
-                </tr>` : ''}
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Ticket Type</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">${ticketType?.name || 'General'}</td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Attendance</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">
-                    <span style="display:inline-block;background:${isOnline ? '#eef2ff;color:#4338ca' : '#f0fdf4;color:#166534'};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${mode}</span>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Reference</td>
-                  <td style="padding:6px 0;font-size:13px;color:#cbd5e1;font-family:monospace;">${ticket.id}</td>
-                </tr>
-              </table>
-            </td></tr>
-          </table>
-        </td></tr>
-
-        ${accessBlock}
-        ${qrBlock}
-
-        ${brandFooter()}
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
-
-async function sendOrderReceiptEmail(base44, order, occurrence, tickets, ticketTypeMap) {
-  const html = buildOrderEmailHtml(order, occurrence, tickets, ticketTypeMap);
-
-  await sendWithRetry(() => resend.emails.send({
-    from: 'Session Pass <noreply@session-pass.com>',
-    to: order.buyer_email,
-    subject: `Booking Confirmed — ${occurrence.name} | Order #${order.order_number}`,
-    html: html
-  }));
-  console.log(`Order receipt email sent to ${order.buyer_email} for order ${order.order_number}`);
-}
-
-async function sendTicketEmail(base44, ticket, occurrence, ticketType, joinUrl) {
-  const isOnline = ticket.attendance_mode === 'online';
-  const html = buildTicketEmailHtml(ticket, occurrence, ticketType, joinUrl);
-
-  await sendWithRetry(() => resend.emails.send({
-    from: 'Session Pass <noreply@session-pass.com>',
-    to: ticket.attendee_email,
-    subject: `Your ${isOnline ? 'Online' : 'In-Person'} Ticket — ${occurrence.name}`,
-    html: html
-  }));
-  console.log(`Ticket email sent to ${ticket.attendee_email} for ticket ${ticket.id}`);
-}
-
-function buildCombinedTicketsEmailHtml(order, occurrence, tickets, ticketTypeMap, zoomJoinUrls = {}) {
-  const eventDate = formatEventDate(occurrence.event_date);
-  const startTime = formatTime(occurrence.start_datetime);
-  const endTime = formatTime(occurrence.end_datetime);
-  const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : startTime || '';
-
-  let venueBlock = '';
-  if (occurrence.venue_details) {
-    venueBlock = `
-      <tr>
-        <td style="padding:6px 0;color:#94a3b8;font-size:13px;width:100px;">Venue</td>
-        <td style="padding:6px 0;font-size:14px;color:#334155;">${occurrence.venue_details}</td>
-      </tr>`;
-  }
-
-  const hasOnlineTickets = tickets.some(t => t.attendance_mode === 'online');
-  const hasInPersonTickets = tickets.some(t => t.attendance_mode !== 'online');
-  const hasJoinUrls = Object.keys(zoomJoinUrls).length > 0;
-  const registrationLink = occurrence.zoom_link || '';
-
-  let zoomBlock = '';
-  if (hasOnlineTickets && hasJoinUrls) {
-    const joinHtml = `<p style="margin:0 0 8px;font-size:13px;color:#64748b;line-height:1.4;">Your online attendees have been registered. Each ticket below includes a direct join link.</p>`;
-    zoomBlock = `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ff;border-radius:8px;padding:20px;border:1px solid #c7d2fe;">
-          <tr><td>
-            <h3 style="margin:0 0 8px;font-size:15px;color:#4338ca;">\ud83d\udda5 Join Online</h3>
-            ${joinHtml}
-          </td></tr>
-        </table>
-      </td></tr>`;
-  } else if (hasOnlineTickets) {
-    zoomBlock = `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ff;border-radius:8px;padding:20px;border:1px solid #c7d2fe;">
-          <tr><td>
-            <h3 style="margin:0 0 4px;font-size:15px;color:#4338ca;">\ud83d\udda5 Online Event</h3>
-            <p style="margin:0;font-size:13px;color:#64748b;">Your webinar join link will be emailed before the event.</p>
-          </td></tr>
-        </table>
-      </td></tr>`;
-  }
-
-  if (hasInPersonTickets && occurrence.venue_details) {
-    zoomBlock += `
-      <tr><td style="padding:0 40px 24px;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border-radius:8px;padding:20px;border:1px solid #bbf7d0;">
-          <tr><td>
-            <h3 style="margin:0 0 4px;font-size:15px;color:#166534;">📍 In-Person Venue</h3>
-            <p style="margin:0;font-size:14px;color:#334155;">${occurrence.venue_details}</p>
-          </td></tr>
-        </table>
-      </td></tr>`;
-  }
-
-  // Build a ticket card for each ticket
-  const ticketBlocks = tickets.map((ticket, idx) => {
-    const tt = ticketTypeMap[ticket.ticket_type_id];
-    const isOnline = ticket.attendance_mode === 'online';
-    const mode = isOnline ? 'Online' : 'In-Person';
-    const modeBg = isOnline ? '#eef2ff;color:#4338ca' : '#f0fdf4;color:#166534';
-    const ticketJoinUrl = zoomJoinUrls[ticket.id];
-
-    let joinHtml = '';
-    if (isOnline && ticketJoinUrl) {
-      joinHtml = `
-        <div style="margin-top:12px;">
-          <a href="${ticketJoinUrl}" style="display:inline-block;background:${BRAND.buttonBg};color:#ffffff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;">Join Webinar →</a>
-        </div>`;
+    // Individual ticket emails
+    for (const ticket of tickets) {
+      const tt = ttMap[ticket.ticket_type_id];
+      const isOnline = ticket.attendance_mode === 'online';
+      const ticketHtml = buildTicketHtml(ticket, event, tt);
+      await base44.asServiceRole.integrations.Core.SendEmail({
+        to: ticket.attendee_email,
+        subject: `Your ${isOnline ? 'Online' : 'In-Person'} Ticket — ${event.name}`,
+        body: ticketHtml,
+        from_name: 'Session Pass',
+      });
     }
+  }
+}
 
-    let qrHtml = '';
-    if (!isOnline) {
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(ticket.qr_code_hash)}`;
-      qrHtml = `
-        <div style="text-align:center;margin-top:16px;padding:20px;background:#ffffff;border-radius:12px;border:2px solid ${BRAND.cardBorder};">
-          <img src="${qrCodeUrl}" alt="QR Code" width="240" height="240" style="display:block;margin:0 auto;" />
-          <p style="margin:12px 0 0;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Scan at door for entry</p>
-        </div>`;
-    }
+// ── Email HTML builders (compact) ──
 
-    return `
-      <tr><td style="padding:0 40px ${idx < tickets.length - 1 ? '16px' : '24px'};">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.cardBg};border-radius:8px;border:1px solid ${BRAND.cardBorder};">
-          <tr><td style="padding:20px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-              <h3 style="margin:0;font-size:16px;color:${BRAND.headingColor};">Ticket ${idx + 1}: ${ticket.attendee_first_name} ${ticket.attendee_last_name}</h3>
-            </div>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr>
-                <td style="padding:4px 0;color:#94a3b8;font-size:13px;width:110px;">Type</td>
-                <td style="padding:4px 0;font-size:14px;color:#334155;">${tt?.name || 'General'}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 0;color:#94a3b8;font-size:13px;">Attendance</td>
-                <td style="padding:4px 0;font-size:14px;color:#334155;"><span style="display:inline-block;background:${modeBg};padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;">${mode}</span></td>
-              </tr>
-            </table>
-            ${joinHtml}
-            ${qrHtml}
-          </td></tr>
-        </table>
-      </td></tr>`;
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+function fmtTime(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+function buildOrderReceiptHtml(order, event, tickets, ttMap, buyerName) {
+  const rows = tickets.map(t => {
+    const tt = ttMap[t.ticket_type_id];
+    const price = tt?.price > 0 ? `$${tt.price.toFixed(2)}` : 'Free';
+    return `<tr><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendee_first_name} ${t.attendee_last_name}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${tt?.name||'Ticket'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0">${t.attendance_mode==='online'?'Online':'In-Person'}</td><td style="padding:8px;border-bottom:1px solid #e2e8f0;text-align:right">${price}</td></tr>`;
   }).join('');
-
-  return `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:${BRAND.bodyBg};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.bodyBg};padding:32px 16px;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(15,23,42,0.08);">
-        
-        ${brandHeader('All Your Tickets', occurrence.name)}
-
-        <tr><td style="padding:32px 40px 16px;">
-          <p style="margin:0;font-size:16px;color:#334155;">Hi <strong>${order.buyer_name}</strong>,</p>
-          <p style="margin:8px 0 0;font-size:14px;color:#64748b;line-height:1.5;">Here are all ${tickets.length} ticket${tickets.length > 1 ? 's' : ''} for the upcoming event.</p>
-        </td></tr>
-
-        <tr><td style="padding:8px 40px 24px;">
-          <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND.cardBg};border-radius:8px;padding:20px;border:1px solid ${BRAND.cardBorder};">
-            <tr><td>
-              <h2 style="margin:0 0 12px;font-size:18px;color:${BRAND.headingColor};">${occurrence.name}</h2>
-              <table width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;width:100px;">Date</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;font-weight:600;">${eventDate}</td>
-                </tr>
-                ${timeStr ? `<tr>
-                  <td style="padding:6px 0;color:#94a3b8;font-size:13px;">Time</td>
-                  <td style="padding:6px 0;font-size:14px;color:#334155;">${timeStr} (${occurrence.timezone || 'AEST'})</td>
-                </tr>` : ''}
-                ${venueBlock}
-              </table>
-            </td></tr>
-          </table>
-        </td></tr>
-
-        ${zoomBlock}
-
-        <tr><td style="padding:0 40px 12px;">
-          <h3 style="margin:0;font-size:15px;color:${BRAND.headingColor};text-transform:uppercase;letter-spacing:0.5px;">Your Tickets</h3>
-          ${hasInPersonTickets ? '<p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">Present each QR code at the door for check-in.</p>' : ''}
-        </td></tr>
-
-        ${ticketBlocks}
-
-        ${brandFooter()}
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const total = order.total_amount > 0 ? `$${order.total_amount.toFixed(2)} AUD` : 'Free';
+  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Booking Confirmed ✓</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">Order #${order.order_number}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Thank you for your booking for <strong>${event.name}</strong>.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)} (${event.timezone||'AEST'})</p><table width="100%" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:8px;margin:16px 0"><tr style="background:#f1f5f9"><th style="padding:8px;text-align:left;font-size:12px">Attendee</th><th style="padding:8px;text-align:left;font-size:12px">Type</th><th style="padding:8px;text-align:left;font-size:12px">Mode</th><th style="padding:8px;text-align:right;font-size:12px">Price</th></tr>${rows}<tr style="background:#f8fafc"><td colspan="3" style="padding:8px;font-weight:bold">Total</td><td style="padding:8px;text-align:right;font-weight:bold">${total}</td></tr></table></div></div>`;
 }
 
-async function sendCombinedTicketsEmail(order, occurrence, tickets, ticketTypeMap, zoomJoinUrls = {}) {
-  const html = buildCombinedTicketsEmailHtml(order, occurrence, tickets, ticketTypeMap, zoomJoinUrls);
+function buildTicketHtml(ticket, event, tt) {
+  const isOnline = ticket.attendance_mode === 'online';
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(ticket.qr_code_hash)}`;
+  const qrBlock = !isOnline ? `<div style="text-align:center;margin:16px 0;padding:16px;border:2px solid #e2e8f0;border-radius:12px"><img src="${qrUrl}" width="240" height="240" style="display:block;margin:auto"/><p style="margin:8px 0 0;font-size:12px;color:#94a3b8">Scan at door for entry</p></div>` : '';
+  const accessInfo = isOnline ? '<p style="background:#eef2ff;padding:12px;border-radius:8px;color:#4338ca;font-size:14px">🖥 Online event — join link will be sent before the event</p>' : (event.venue_details ? `<p style="background:#f0fdf4;padding:12px;border-radius:8px;color:#166534;font-size:14px">📍 ${event.venue_details}</p>` : '');
+  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">Your Ticket</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">${event.name}</p></div><div style="padding:24px"><p>Hi <strong>${ticket.attendee_first_name}</strong>,</p><p><strong>Event:</strong> ${event.name}<br><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}<br><strong>Type:</strong> ${tt?.name||'General'} (${isOnline?'Online':'In-Person'})</p>${accessInfo}${qrBlock}</div></div>`;
+}
 
-  await sendWithRetry(() => resend.emails.send({
-    from: 'Session Pass <noreply@session-pass.com>',
-    to: order.buyer_email,
-    subject: `Your ${tickets.length} Ticket${tickets.length > 1 ? 's' : ''} — ${occurrence.name}`,
-    html: html
-  }));
-  console.log(`Combined tickets email sent to ${order.buyer_email} for order ${order.order_number}`);
+function buildCombinedTicketsHtml(order, event, tickets, ttMap, buyerName) {
+  const ticketBlocks = tickets.map((t, i) => {
+    const tt = ttMap[t.ticket_type_id];
+    const isOnline = t.attendance_mode === 'online';
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(t.qr_code_hash)}`;
+    const qrBlock = !isOnline ? `<div style="text-align:center;margin:8px 0;padding:12px;border:1px solid #e2e8f0;border-radius:8px"><img src="${qrUrl}" width="180" height="180" style="display:block;margin:auto"/></div>` : '';
+    return `<div style="background:#f8fafc;padding:16px;border-radius:8px;border:1px solid #e2e8f0;margin:8px 0"><strong>Ticket ${i+1}: ${t.attendee_first_name} ${t.attendee_last_name}</strong><br><span style="font-size:13px;color:#64748b">${tt?.name||'General'} · ${isOnline?'Online':'In-Person'}</span>${qrBlock}</div>`;
+  }).join('');
+  return `<div style="font-family:sans-serif;max-width:600px;margin:auto"><div style="background:#0f172a;padding:24px;text-align:center;color:white"><h1 style="margin:0;font-size:20px">All Your Tickets</h1><p style="margin:4px 0 0;opacity:0.7;font-size:14px">${event.name}</p></div><div style="padding:24px"><p>Hi <strong>${buyerName}</strong>,</p><p>Here are all ${tickets.length} ticket${tickets.length>1?'s':''} for <strong>${event.name}</strong>.</p><p><strong>Date:</strong> ${fmtDate(event.event_date)}<br><strong>Time:</strong> ${fmtTime(event.start_datetime)} – ${fmtTime(event.end_datetime)}</p>${ticketBlocks}</div></div>`;
 }
