@@ -2,7 +2,7 @@ import { Check, X, Minus } from 'lucide-react';
 
 const COMPETITORS = [
   {
-    name: 'Ticket Space (Starter)',
+    name: 'Ticket Deck (Starter)',
     subscription: 'None',
     perTicket: 'FREE',
     stripeFee: '$1.18',
@@ -11,7 +11,7 @@ const COMPETITORS = [
     best: true,
   },
   {
-    name: 'Ticket Space (Pro)',
+    name: 'Ticket Deck (Pro)',
     subscription: 'None',
     perTicket: '0.9%',
     stripeFee: '$1.18',
@@ -80,7 +80,7 @@ export default function ComparisonSection() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-            Ticket Space vs Eventbrite vs Ticket Tailor vs Humanitix
+            Ticket Deck vs Eventbrite vs Ticket Tailor vs Humanitix
           </h2>
           <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
             See how ticketing fees compare across Australia's most popular event platforms on a $50 ticket.
@@ -126,7 +126,7 @@ export default function ComparisonSection() {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-3 px-4 text-muted-foreground font-medium">Feature</th>
-                  <th className="text-center py-3 px-4 text-primary font-semibold">Ticket Space</th>
+                  <th className="text-center py-3 px-4 text-primary font-semibold">Ticket Deck</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Ticket Tailor</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Eventbrite</th>
                   <th className="text-center py-3 px-4 text-muted-foreground font-medium">Humanitix</th>

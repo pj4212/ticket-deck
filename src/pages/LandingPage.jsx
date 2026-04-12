@@ -58,7 +58,7 @@ export default function LandingPage() {
               <strong className="text-foreground">Humanitix</strong> donates fees to charity, but still takes 5% + Stripe fees from your revenue.
             </p>
             <p>
-              <strong className="text-foreground">Ticket Space</strong> takes a different approach: no monthly subscriptions, no flat per-ticket fees, and a free tier 
+              <strong className="text-foreground">Ticket Deck</strong> takes a different approach: no monthly subscriptions, no flat per-ticket fees, and a free tier 
               for organisers selling up to 50 tickets a month. For higher volumes, our platform fee drops as low as 0.6% per ticket — 
               making us the cheapest way to sell event tickets online in Australia.
             </p>
@@ -78,7 +78,7 @@ export default function LandingPage() {
             Ready to stop overpaying for event ticketing?
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Join organisers across Australia who are keeping more of their ticket revenue with Ticket Space.
+            Join organisers across Australia who are keeping more of their ticket revenue with Ticket Deck.
           </p>
           <Button size="lg" className="mt-8 gap-2 text-base px-8" onClick={() => window.location.href = '/admin'}>
             Start selling tickets free <ArrowRight className="h-4 w-4" />
@@ -92,7 +92,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Ticket className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground">Ticket Space</span>
+              <span className="font-semibold text-foreground">Ticket Deck</span>
             </div>
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
               <a href="#features" className="hover:text-foreground transition-colors">Features</a>
@@ -100,7 +100,7 @@ export default function LandingPage() {
               <a href="/events" className="hover:text-foreground transition-colors">Browse Events</a>
             </nav>
             <p className="text-sm text-muted-foreground">
-              &copy; {new Date().getFullYear()} Ticket Space. All rights reserved.
+              &copy; {new Date().getFullYear()} Ticket Deck. All rights reserved.
             </p>
           </div>
         </div>

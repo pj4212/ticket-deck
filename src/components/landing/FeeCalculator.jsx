@@ -40,7 +40,7 @@ export default function FeeCalculator() {
         {/* Header */}
         <div className="bg-primary/10 border-b border-border px-6 py-5 text-center">
           <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-            Calculate your Ticket Space fees
+            Calculate your Ticket Deck fees
           </h2>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Enter your ticket price to see exactly what you'll pay — no hidden costs
@@ -136,7 +136,7 @@ export default function FeeCalculator() {
                   <span className="text-foreground font-medium">${stripeFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ticket Space fee ({tier.label})</span>
+                  <span className="text-muted-foreground">Ticket Deck fee ({tier.label})</span>
                   <span className="text-foreground font-medium">
                     {platformFee === 0 ? 'FREE' : `$${platformFee.toFixed(2)}`}
                   </span>
