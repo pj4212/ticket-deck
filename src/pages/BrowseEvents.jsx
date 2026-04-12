@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, MapPin, ArrowRight, Loader2, Search } from 'lucide-react';
+import { Loader2, Search, LayoutGrid, List } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { EventCardList, EventCardGrid } from '@/components/public/EventCard';
 
 export default function BrowseEvents() {
   const [events, setEvents] = useState([]);
+  const [ticketPrices, setTicketPrices] = useState({});
+  const [soldOutMap, setSoldOutMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState('list');
 
   useEffect(() => {
     async function load() {
@@ -18,6 +20,23 @@ export default function BrowseEvents() {
         .filter(e => e.event_date >= now)
         .sort((a, b) => a.event_date.localeCompare(b.event_date));
       setEvents(upcoming);
+
+      // Load ticket prices
+      if (upcoming.length) {
+        const allTicketTypes = await base44.entities.TicketType.filter({ is_active: true });
+        const prices = {};
+        const soldOut = {};
+        for (const ev of upcoming) {
+          const tts = allTicketTypes.filter(tt => tt.event_id === ev.id);
+          if (tts.length) {
+            prices[ev.id] = Math.min(...tts.map(tt => tt.price || 0));
+            soldOut[ev.id] = tts.every(tt => tt.capacity_limit && (tt.quantity_sold || 0) >= tt.capacity_limit);
+          }
+        }
+        setTicketPrices(prices);
+        setSoldOutMap(soldOut);
+      }
+
       setLoading(false);
     }
     load();
@@ -45,6 +64,25 @@ export default function BrowseEvents() {
       </section>
 
       <section className="max-w-5xl mx-auto px-4 py-10">
+        {!loading && filtered.length > 0 && (
+          <div className="flex justify-end mb-4">
+            <div className="flex items-center gap-1 bg-secondary/50 rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('card')}
+                className={`p-1.5 rounded-md transition-colors ${viewMode === 'card' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -53,67 +91,32 @@ export default function BrowseEvents() {
           <p className="text-center text-muted-foreground py-12">
             {search ? 'No events match your search.' : 'No upcoming events at this time.'}
           </p>
-        ) : (
-          <div className="space-y-4">
+        ) : viewMode === 'list' ? (
+          <div className="space-y-3">
             {filtered.map(event => (
-              <EventCard key={event.id} event={event} />
+              <EventCardList
+                key={event.id}
+                event={event}
+                startingPrice={ticketPrices[event.id]}
+                soldOut={soldOutMap[event.id]}
+                salesClosed={event.sales_close_at && new Date().toISOString() > event.sales_close_at}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map(event => (
+              <EventCardGrid
+                key={event.id}
+                event={event}
+                startingPrice={ticketPrices[event.id]}
+                soldOut={soldOutMap[event.id]}
+                salesClosed={event.sales_close_at && new Date().toISOString() > event.sales_close_at}
+              />
             ))}
           </div>
         )}
       </section>
     </div>
-  );
-}
-
-function EventCard({ event }) {
-  const fmtTime = (d) => {
-    if (!d) return '';
-    const match = d.match(/T(\d{2}):(\d{2})/);
-    if (match) {
-      const h = parseInt(match[1], 10);
-      return `${h % 12 || 12}:${match[2]} ${h >= 12 ? 'pm' : 'am'}`;
-    }
-    return '';
-  };
-
-  const modeLabel = event.event_mode === 'online_stream' ? 'Online' : event.event_mode === 'hybrid' ? 'Hybrid' : 'In-Person';
-
-  return (
-    <Link
-      to={`/event/${event.slug}`}
-      className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-primary/30 hover:shadow-sm transition-all group"
-    >
-      <div className="hidden sm:flex flex-col items-center justify-center bg-primary/10 rounded-lg px-3 py-2.5 min-w-[64px]">
-        <span className="text-xs font-medium text-primary uppercase">
-          {new Date(event.event_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short' })}
-        </span>
-        <span className="text-2xl font-bold text-primary leading-tight">
-          {new Date(event.event_date + 'T00:00:00').getDate()}
-        </span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="font-semibold text-foreground group-hover:text-primary transition-colors truncate">{event.name}</span>
-          <Badge variant="outline" className="text-xs shrink-0">{modeLabel}</Badge>
-        </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1 sm:hidden">
-            <Calendar className="h-3.5 w-3.5" />
-            {new Date(event.event_date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })}
-          </span>
-          <span className="flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" />
-            {fmtTime(event.start_datetime)} – {fmtTime(event.end_datetime)}
-          </span>
-          {event.venue_details && (
-            <span className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="truncate max-w-[200px]">{event.venue_details}</span>
-            </span>
-          )}
-        </div>
-      </div>
-      <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-    </Link>
   );
 }

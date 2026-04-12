@@ -1,9 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, Calendar, Clock, MapPin, Monitor, ArrowRight } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { EventCardList } from '@/components/public/EventCard';
 
 export default function SeriesPage() {
   const { slug } = useParams();
@@ -13,8 +12,8 @@ export default function SeriesPage() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    document.title = series ? `${series.name} — Session Pass` : 'Session Pass';
-    return () => { document.title = 'Session Pass'; };
+    document.title = series ? `${series.name} — Ticket Deck` : 'Ticket Deck';
+    return () => { document.title = 'Ticket Deck'; };
   }, [series]);
 
   useEffect(() => {
@@ -35,9 +34,6 @@ export default function SeriesPage() {
     load();
   }, [slug]);
 
-  const fmtDate = (d) => { if (!d) return ''; const [y,m,day]=d.slice(0,10).split('-').map(Number); return new Date(y,m-1,day).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}); };
-  const fmtTime = (d) => { if (!d) return ''; const match = d.match(/T(\d{2}):(\d{2})/); if(match){const h=parseInt(match[1],10);return `${h%12||12}:${match[2]} ${h>=12?'pm':'am'}`;} return ''; };
-
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   if (error) return <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center"><h1 className="text-2xl font-bold mb-2">Not Found</h1><p className="text-muted-foreground">{error}</p></div></div>;
 
@@ -53,29 +49,9 @@ export default function SeriesPage() {
       ) : (
         <div className="space-y-3">
           <h2 className="text-xl font-semibold mb-4">Upcoming Sessions</h2>
-          {events.map(event => {
-            const modeLabel = event.event_mode === 'online_stream' ? 'Online' : event.event_mode === 'hybrid' ? 'Hybrid' : 'In-Person';
-            return (
-              <Link key={event.id} to={`/event/${event.slug}`}
-                className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-primary/30 transition-all group">
-                <div className="hidden sm:flex flex-col items-center bg-primary/10 rounded-lg px-3 py-2 min-w-[64px]">
-                  <span className="text-xs font-medium text-primary uppercase">{new Date(event.event_date+'T00:00:00').toLocaleDateString('en-AU',{weekday:'short'})}</span>
-                  <span className="text-2xl font-bold text-primary leading-tight">{new Date(event.event_date+'T00:00:00').getDate()}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-semibold group-hover:text-primary transition-colors truncate">{event.name}</span>
-                    <Badge variant="outline" className="text-xs">{modeLabel}</Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1 sm:hidden"><Calendar className="h-3.5 w-3.5" />{fmtDate(event.event_date)}</span>
-                    <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{fmtTime(event.start_datetime)} – {fmtTime(event.end_datetime)}</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-              </Link>
-            );
-          })}
+          {events.map(event => (
+            <EventCardList key={event.id} event={event} />
+          ))}
         </div>
       )}
     </div>

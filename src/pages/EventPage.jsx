@@ -3,8 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Calendar, Clock, MapPin, Monitor, Loader2, ArrowLeft, Lock } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import EventHeader from '@/components/public/EventHeader';
+import EventDescription from '@/components/public/EventDescription';
+import EventStatusBanner from '@/components/public/EventStatusBanner';
+import VisibilityGate from '@/components/public/VisibilityGate';
 import TicketSelector from '@/components/booking/TicketSelector';
 import BuyerForm from '@/components/booking/BuyerForm';
 import AttendeeForm from '@/components/booking/AttendeeForm';
@@ -19,6 +22,8 @@ function loadSavedBuyer() {
 export default function EventPage() {
   const { slug } = useParams();
   const [event, setEvent] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
+  const [venue, setVenue] = useState(null);
   const [seriesSlug, setSeriesSlug] = useState(null);
   const [ticketTypes, setTicketTypes] = useState([]);
   const [customFields, setCustomFields] = useState([]);
@@ -26,9 +31,6 @@ export default function EventPage() {
   const [error, setError] = useState(null);
 
   // Password gate
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState('');
   const [accessGranted, setAccessGranted] = useState(false);
 
   // Checkout state
@@ -47,14 +49,26 @@ export default function EventPage() {
       const ev = allEvents[0];
       setEvent(ev);
 
-      // Visibility check
+      // Load workspace for branding
+      if (ev.workspace_id) {
+        base44.entities.Workspace.filter({ id: ev.workspace_id }).then(ws => {
+          if (ws.length) setWorkspace(ws[0]);
+        });
+      }
+
+      // Load venue
+      if (ev.venue_id) {
+        base44.entities.Venue.filter({ id: ev.venue_id }).then(v => {
+          if (v.length) setVenue(v[0]);
+        });
+      }
+
+      // Visibility gates — stop here for private/password
       if (ev.visibility_mode === 'private_invite_only') {
-        setError('This event is invite-only');
         setLoading(false);
         return;
       }
       if (ev.visibility_mode === 'password_protected' && !accessGranted) {
-        setNeedsPassword(true);
         setLoading(false);
         return;
       }
@@ -115,15 +129,7 @@ export default function EventPage() {
     setLoading(false);
   }
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === event?.access_password) {
-      setAccessGranted(true);
-      setNeedsPassword(false);
-      setPasswordError('');
-    } else {
-      setPasswordError('Incorrect password');
-    }
-  };
+
 
   // Slots
   const totalTickets = useMemo(() => Object.values(selections).reduce((s, q) => s + q, 0), [selections]);
@@ -222,7 +228,7 @@ export default function EventPage() {
         email: (a.email || buyer.email).toLowerCase(),
         ticket_type_id: a.ticket_type_id,
       })),
-      access_password: passwordInput || undefined,
+      access_password: event.visibility_mode === 'password_protected' ? event.access_password : undefined,
     });
     if (!validation.data.valid) {
       setSubmitError(validation.data.errors?.[0]?.message || 'Validation failed');
@@ -243,7 +249,7 @@ export default function EventPage() {
       event_id: event.id,
       origin_url: window.location.origin,
       send_all_to_buyer: sendAllToBuyer,
-      access_password: passwordInput || undefined,
+      access_password: event.visibility_mode === 'password_protected' ? event.access_password : undefined,
     });
 
     if (result.data.error) {
@@ -267,22 +273,22 @@ export default function EventPage() {
   // ── Render ──
 
   if (loading) {
-    return <div className="max-w-3xl mx-auto px-4 py-8"><div className="h-8 w-48 bg-muted rounded animate-pulse mb-4" /><div className="h-12 w-3/4 bg-muted rounded animate-pulse mb-3" /><div className="h-20 bg-card border rounded-lg animate-pulse" /></div>;
-  }
-
-  if (needsPassword) {
     return (
-      <div className="max-w-md mx-auto px-4 py-20 text-center">
-        <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Password Required</h1>
-        <p className="text-muted-foreground mb-6">This event requires a password to access.</p>
-        <div className="space-y-3">
-          <Input type="password" placeholder="Enter event password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handlePasswordSubmit()} />
-          {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
-          <Button className="w-full" onClick={handlePasswordSubmit}>Access Event</Button>
-        </div>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="h-8 w-48 bg-muted rounded animate-pulse mb-4" />
+        <div className="h-12 w-3/4 bg-muted rounded animate-pulse mb-3" />
+        <div className="h-6 w-1/2 bg-muted rounded animate-pulse mb-6" />
+        <div className="h-32 bg-card border rounded-lg animate-pulse" />
       </div>
     );
+  }
+
+  // Visibility gates
+  if (event?.visibility_mode === 'private_invite_only') {
+    return <VisibilityGate event={event} />;
+  }
+  if (event?.visibility_mode === 'password_protected' && !accessGranted) {
+    return <VisibilityGate event={event} accessGranted={accessGranted} onAccessGranted={() => setAccessGranted(true)} />;
   }
 
   if (error) {
@@ -290,8 +296,6 @@ export default function EventPage() {
   }
 
   const eventAvailable = isEventAvailable();
-  const fmtDate = (d) => { if (!d) return ''; const [y,m,day]=d.slice(0,10).split('-').map(Number); return new Date(y,m-1,day).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); };
-  const fmtTime = (d) => { if (!d) return ''; const match = d.match(/T(\d{2}):(\d{2})/); if(match){const h=parseInt(match[1],10);return `${h%12||12}:${match[2]} ${h>=12?'pm':'am'}`;} return ''; };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -303,25 +307,21 @@ export default function EventPage() {
 
       {/* Event Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{event.name}</h1>
-        {event.description && <p className="text-muted-foreground mb-4">{event.description}</p>}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
-          <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4 text-muted-foreground" />{fmtDate(event.event_date)}</span>
-          <span className="flex items-center gap-1.5"><Clock className="h-4 w-4 text-muted-foreground" />{fmtTime(event.start_datetime)} – {fmtTime(event.end_datetime)} ({event.timezone || 'AEST'})</span>
-          {event.event_mode === 'online_stream' && <span className="flex items-center gap-1.5"><Monitor className="h-4 w-4 text-muted-foreground" />Online via Zoom</span>}
-          {event.venue_details && event.event_mode !== 'online_stream' && <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4 text-muted-foreground" />{event.venue_details}</span>}
-        </div>
+        <EventHeader event={event} venue={venue} workspace={workspace} />
       </div>
 
-      {!eventAvailable ? (
-        <Alert><AlertDescription>
-          {event.status === 'cancelled' ? 'This event has been cancelled.' :
-           event.status === 'completed' ? 'This event has already taken place.' :
-           event.sales_close_at && new Date().toISOString() > event.sales_close_at ? 'Ticket sales are closed.' :
-           'This event is not yet available for booking.'}
-        </AlertDescription></Alert>
-      ) : (
-        <div className="space-y-8">
+      {/* Description */}
+      {event.description && (
+        <div className="mb-8 pb-8 border-b border-border">
+          <EventDescription description={event.description} />
+        </div>
+      )}
+
+      {/* Status banner */}
+      <EventStatusBanner event={event} ticketTypes={ticketTypes} />
+
+      {!eventAvailable ? null : (
+        <div className="space-y-8 mt-6">
           <TicketSelector ticketTypes={ticketTypes} selections={selections} onSelectionsChange={setSelections} />
           <OrderSummary selections={selections} ticketTypes={ticketTypes} />
 
